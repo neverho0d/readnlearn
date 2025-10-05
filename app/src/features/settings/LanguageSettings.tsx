@@ -1,19 +1,47 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useSettings, LANGUAGES } from "../../lib/settings/SettingsContext";
 import { useI18n } from "../../lib/i18n/I18nContext";
 import "./LanguageSettings.css";
+import { useTheme } from "../../lib/settings/ThemeContext";
+import { useAppMode, AppMode } from "../../lib/state/appMode";
 
 interface LanguageSettingsProps {
   onLoadSampleText?: () => void;
   isLoading?: boolean;
+  onLoadFile?: (text: string) => void;
 }
 
 export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
   onLoadSampleText,
   isLoading = false,
+  onLoadFile,
 }) => {
   const { settings, updateSettings, getLanguageName } = useSettings();
   const { t } = useI18n();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { theme, toggleTheme } = useTheme();
+  const { mode, setMode } = useAppMode();
+
+  const handlePickFile = () => {
+    if (onLoadFile && fileInputRef.current) {
+      fileInputRef.current.value = ""; // reset
+      fileInputRef.current.click();
+    } else if (onLoadSampleText) {
+      onLoadSampleText();
+    }
+  };
+
+  const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    if (!onLoadFile) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === "string" ? reader.result : "";
+      onLoadFile(text);
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <div
@@ -23,10 +51,10 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
         top: 0,
         left: 0,
         right: 0,
-        backgroundColor: "#1a202c",
-        color: "white",
+        backgroundColor: "var(--topbar-bg)",
+        color: "var(--topbar-text)",
         padding: "8px 16px",
-        borderBottom: "1px solid #2d3748",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
         zIndex: 1000,
         display: "flex",
         alignItems: "center",
@@ -134,19 +162,39 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
         </div>
       </div>
 
-      {/* Current Language Display and Load Button */}
+      {/* Mode switch, current language, and Load */}
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {/* Mode switch */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as AppMode)}
+            style={{
+              backgroundColor: "#2d3748",
+              color: "white",
+              border: "1px solid #4a5568",
+              borderRadius: 4,
+              padding: "4px 8px",
+              fontSize: 12,
+            }}
+          >
+            <option value="reading">Reading</option>
+            <option value="dictionary">Dictionary</option>
+            <option value="learning">Learning</option>
+          </select>
+        </div>
+
         <span style={{ color: "#a0aec0", fontSize: "12px" }}>
           {getLanguageName(settings.l1)} →{" "}
           {settings.l2AutoDetect ? "Auto" : getLanguageName(settings.l2)}
         </span>
-        {onLoadSampleText && (
+        {(onLoadSampleText || onLoadFile) && (
           <button
-            onClick={onLoadSampleText}
+            onClick={handlePickFile}
             disabled={isLoading}
             style={{
-              backgroundColor: isLoading ? "#4a5568" : "#3182ce",
-              color: "white",
+              backgroundColor: isLoading ? "#4a5568" : "var(--primary)",
+              color: "var(--primary-contrast)",
               border: "none",
               borderRadius: "4px",
               padding: "6px 12px",
@@ -178,7 +226,32 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
             {isLoading ? t.loadingText : t.loadButton}
           </button>
         )}
+
+        {/* Theme switch */}
+        <button
+          onClick={toggleTheme}
+          style={{
+            backgroundColor: "transparent",
+            color: "var(--topbar-text)",
+            border: "1px solid rgba(255,255,255,0.18)",
+            borderRadius: "4px",
+            padding: "6px 10px",
+            cursor: "pointer",
+            fontSize: "12px",
+          }}
+          title={theme === "dark" ? "Switch to light" : "Switch to dark"}
+        >
+          {theme === "dark" ? "Light" : "Dark"}
+        </button>
       </div>
+      {/* hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.md,.markdown,text/plain,text/markdown"
+        onChange={handleFileChange}
+        style={{ display: "none" }}
+      />
     </div>
   );
 };

@@ -1,42 +1,53 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../../lib/i18n/I18nContext";
 
 interface PhraseSelectorProps {
   selectedText: string;
-  onPhraseSelect: (phrase: string) => void;
+  onPhraseSelect: (data: {
+    phrase: string;
+    tags: string[];
+    translation: string;
+  }) => void;
   onClear: () => void;
+  suggestedTags?: string[];
 }
 
 export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
   selectedText,
   onPhraseSelect,
   onClear,
+  suggestedTags = [],
 }) => {
   const { t } = useI18n();
-  const [phrase, setPhrase] = useState(selectedText);
-  const [context, setContext] = useState("");
-  const [translation, setTranslation] = useState("");
+  const phrase = selectedText;
+  const translation = useMemo(
+    () => (phrase ? `example translation of "${phrase}"` : "—"),
+    [phrase],
+  );
+  const [tags, setTags] = useState<string>(suggestedTags.join(", "));
 
   const handleSavePhrase = () => {
     if (!phrase.trim()) {
       alert(t.phraseEmpty);
       return;
     }
-    onPhraseSelect(phrase);
+    const parsedTags = tags
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    onPhraseSelect({ phrase, tags: parsedTags, translation });
     alert(`"${phrase}" ${t.phraseSaved}`);
-    setPhrase("");
-    setContext("");
-    setTranslation("");
+    setTags("");
     onClear();
   };
 
   return (
     <div
       style={{
-        border: "1px solid #bee3f8",
+        border: "1px solid var(--border)",
         borderRadius: "8px",
         padding: "16px",
-        backgroundColor: "#ebf8ff",
+        backgroundColor: "var(--panel)",
         position: "fixed",
         right: "20px",
         bottom: "20px",
@@ -48,6 +59,52 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {/* Phrase (read-only display without label/border) */}
+          <div
+            style={{
+              width: "100%",
+              fontSize: "16px",
+              fontWeight: 600,
+              color: "var(--text)",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {phrase || "—"}
+          </div>
+
+          {/* Translation (read-only display; stubbed for now) */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: 500,
+                marginBottom: "4px",
+                textTransform: "lowercase",
+              }}
+            >
+              translation:
+            </label>
+            <div
+              style={{
+                width: "100%",
+                padding: "4px 0",
+                border: "none",
+                fontSize: "14px",
+                background: "transparent",
+                color: "var(--text)",
+                minHeight: "20px",
+                whiteSpace: "pre-wrap",
+                overflowWrap: "anywhere",
+                boxSizing: "border-box",
+              }}
+            >
+              {translation || "—"}
+            </div>
+          </div>
+
+          {/* Tags (editable, comma-separated) */}
           <div>
             <label
               style={{
@@ -57,75 +114,23 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
                 marginBottom: "4px",
               }}
             >
-              {t.phrase}
+              Tags (comma-separated)
             </label>
             <input
               type="text"
-              value={phrase}
-              onChange={(e) => setPhrase(e.target.value)}
-              placeholder={t.editPhrasePlaceholder}
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="e.g. travel, greeting"
               style={{
                 width: "100%",
                 padding: "8px 12px",
-                border: "1px solid #e2e8f0",
+                border: "1px solid var(--border)",
                 borderRadius: "4px",
                 fontSize: "14px",
                 boxSizing: "border-box",
-              }}
-            />
-          </div>
-
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: 500,
-                marginBottom: "4px",
-              }}
-            >
-              {t.context}
-            </label>
-            <textarea
-              value={context}
-              onChange={(e) => setContext(e.target.value)}
-              placeholder={t.contextPlaceholder}
-              rows={2}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: "1px solid #e2e8f0",
-                borderRadius: "4px",
-                fontSize: "14px",
-                resize: "vertical",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: 500,
-                marginBottom: "4px",
-              }}
-            >
-              {t.translation}
-            </label>
-            <input
-              type="text"
-              value={translation}
-              onChange={(e) => setTranslation(e.target.value)}
-              placeholder={t.translationPlaceholder}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: "1px solid #e2e8f0",
-                borderRadius: "4px",
-                fontSize: "14px",
-                boxSizing: "border-box",
+                backgroundColor: "var(--panel)",
+                color: "var(--text)",
+                boxShadow: "none",
               }}
             />
           </div>
@@ -135,12 +140,15 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
           <button
             onClick={onClear}
             style={{
-              padding: "8px 16px",
-              backgroundColor: "white",
-              color: "#3182ce",
-              border: "1px solid #3182ce",
+              padding: "6px 10px",
+              backgroundColor: "transparent",
+              color: "var(--primary)",
+              border: "1px solid var(--primary)",
               borderRadius: "4px",
               cursor: "pointer",
+              height: 30,
+              lineHeight: "16px",
+              fontSize: 12,
             }}
           >
             {t.cancel}
@@ -149,12 +157,15 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
             onClick={handleSavePhrase}
             disabled={!phrase.trim()}
             style={{
-              padding: "8px 16px",
-              backgroundColor: phrase.trim() ? "#3182ce" : "#e2e8f0",
-              color: "white",
+              padding: "6px 12px",
+              backgroundColor: phrase.trim() ? "var(--primary)" : "#e2e8f0",
+              color: "var(--primary-contrast)",
               border: "none",
               borderRadius: "44px",
               cursor: phrase.trim() ? "pointer" : "not-allowed",
+              height: 30,
+              lineHeight: "16px",
+              fontSize: 12,
             }}
           >
             {t.savePhrase}

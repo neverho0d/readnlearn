@@ -3,6 +3,7 @@ import { useI18n, getSampleTextForLanguage } from "../../lib/i18n/I18nContext";
 import { useSettings } from "../../lib/settings/SettingsContext";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { PhraseSelector } from "./PhraseSelector";
+import { savePhrase } from "../../lib/db/phraseStore";
 
 interface TextReaderProps {
   content?: string;
@@ -28,6 +29,14 @@ export const TextReader: React.FC<TextReaderProps> = ({
 
   // No direct textarea editing in reader-only mode; text is controlled via loaders
 
+  // Sync external content when provided (file open)
+  React.useEffect(() => {
+    if (content && content !== text) {
+      setText(content);
+      setShowInstructions(false);
+    }
+  }, [content]);
+
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (selection && selection.toString().trim()) {
@@ -35,11 +44,21 @@ export const TextReader: React.FC<TextReaderProps> = ({
     }
   };
 
-  const handleSavePhrase = (phrase: string) => {
-    if (onPhraseSelect) {
-      const context = getContextAroundPhrase(phrase, text);
-      onPhraseSelect(phrase, context);
-    }
+  const handleSavePhrase = async (payload: {
+    phrase: string;
+    tags: string[];
+    translation: string;
+  }) => {
+    const context = getContextAroundPhrase(payload.phrase, text);
+    // Persist locally for now
+    await savePhrase({
+      lang: settings.l2AutoDetect ? "es" : settings.l2,
+      text: payload.phrase,
+      translation: payload.translation,
+      context,
+      tags: payload.tags,
+    });
+    if (onPhraseSelect) onPhraseSelect(payload.phrase, context);
   };
 
   const getContextAroundPhrase = (phrase: string, fullText: string): string => {
@@ -173,7 +192,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
 
         <div
           style={{
-            border: "1px solid #e2e8f0",
+            border: "none",
             borderRadius: "8px",
             padding: "16px",
             minHeight: "400px",
