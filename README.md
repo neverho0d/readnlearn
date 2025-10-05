@@ -14,17 +14,20 @@ A local-first phrase book with cloud providers (LLM/MT/TTS) for memorizing via s
 ## Development Setup
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Set up environment variables:
+
    ```bash
    cp .env.example .env
    # Edit .env with your API keys
    ```
 
 3. Run development server:
+
    ```bash
    npm run tauri:dev
    ```

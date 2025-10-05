@@ -1,22 +1,26 @@
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import { resolve } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = resolve(__filename, "..");
 
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
-    setupFiles: ['./app/tests/setup.ts'],
+    environment: "jsdom",
+    setupFiles: ["./app/tests/setup.ts"],
     globals: true,
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './app/src'),
-      '@/components': resolve(__dirname, './app/src/components'),
-      '@/features': resolve(__dirname, './app/src/features'),
-      '@/lib': resolve(__dirname, './app/src/lib'),
-      '@/adapters': resolve(__dirname, './app/src/adapters'),
-      '@/types': resolve(__dirname, './app/src/types'),
+      "@": resolve(__dirname, "./app/src"),
+      "@/components": resolve(__dirname, "./app/src/components"),
+      "@/features": resolve(__dirname, "./app/src/features"),
+      "@/lib": resolve(__dirname, "./app/src/lib"),
+      "@/adapters": resolve(__dirname, "./app/src/adapters"),
+      "@/types": resolve(__dirname, "./app/src/types"),
     },
   },
-})
+});
