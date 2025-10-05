@@ -36,3 +36,14 @@ A local-first phrase book with cloud providers (LLM/MT/TTS) for memorizing via s
 
 ## Project Structure
 
+```shell
+/app
+  /src
+    /adapters          # Cloud provider adapters
+    /components        # Reusable UI components
+    /features          # Feature-specific components
+    /lib               # Core business logic
+    /state             # State management
+    /types             # TypeScript type definitions
+  /tests               # Test files
+```
