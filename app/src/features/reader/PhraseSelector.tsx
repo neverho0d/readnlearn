@@ -37,36 +37,16 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
         borderRadius: "8px",
         padding: "16px",
         backgroundColor: "#ebf8ff",
+        position: "fixed",
+        right: "20px",
+        bottom: "20px",
+        maxWidth: "min(92vw, 480px)",
+        width: "480px",
+        zIndex: 1100,
+        boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h3 style={{ margin: 0, color: "#2b6cb0", fontWeight: "bold" }}>
-            {t.selectPhrase}
-          </h3>
-          <span
-            style={{
-              backgroundColor: "#3182ce",
-              color: "white",
-              padding: "4px 8px",
-              borderRadius: "4px",
-              fontSize: "12px",
-            }}
-          >
-            {t.selectedText}
-          </span>
-        </div>
-
-        <hr
-          style={{ margin: 0, border: "none", borderTop: "1px solid #bee3f8" }}
-        />
-
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <div>
             <label
@@ -90,6 +70,7 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
                 border: "1px solid #e2e8f0",
                 borderRadius: "4px",
                 fontSize: "14px",
+                boxSizing: "border-box",
               }}
             />
           </div>
@@ -117,6 +98,7 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
                 borderRadius: "4px",
                 fontSize: "14px",
                 resize: "vertical",
+                boxSizing: "border-box",
               }}
             />
           </div>
@@ -143,6 +125,7 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
                 border: "1px solid #e2e8f0",
                 borderRadius: "4px",
                 fontSize: "14px",
+                boxSizing: "border-box",
               }}
             />
           </div>
