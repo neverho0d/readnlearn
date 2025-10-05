@@ -27,8 +27,9 @@
       "@/lib/*": ["./app/src/lib/*"],
       "@/adapters/*": ["./app/src/adapters/*"],
       "@/types/*": ["./app/src/types/*"]
-    }
+    },
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["app/src/**/*", "src-tauri/src/**/*"],
+  "include": ["app/src/**/*", "app/tests/**/*", "src-tauri/src/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

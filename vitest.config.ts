@@ -9,7 +9,7 @@ const __dirname = resolve(__filename, "..");
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: "jsdom",
+    environment: "happy-dom",
     setupFiles: ["./app/tests/setup.ts"],
     globals: true,
   },
