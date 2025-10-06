@@ -10,8 +10,7 @@ Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
 beforeEach(() => {
   localStorage.clear();
   // Stub alert for components that use it
-  // @ts-expect-error test env stub
-  globalThis.alert = vi.fn();
+  (globalThis as unknown as { alert: unknown }).alert = vi.fn();
 });
 
 // Note: MSW is not used yet; add it here when network tests are introduced

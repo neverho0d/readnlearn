@@ -18,7 +18,11 @@
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "lint:fix": "eslint . --ext ts,tsx --fix",
         "format": "prettier --write .",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "ci": "npm run type-check && npm run lint && npm run test:coverage",
+        "ci:build": "npm run build && npm run tauri:build",
+        "security:audit": "npm audit --audit-level=moderate",
+        "security:audit:fix": "npm audit fix"
     },
     "dependencies": {
         "@chakra-ui/icons": "^2.2.4",

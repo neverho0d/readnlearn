@@ -1,0 +1,136 @@
+name: CI/CD Pipeline
+
+on:
+    push:
+        branches: [main, dev]
+    pull_request:
+        branches: [main, dev]
+
+jobs:
+    test:
+        name: Test & Coverage
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+                  cache-dependency-path: "package.json"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run type check
+              run: npm run type-check
+
+            - name: Run linting
+              run: npm run lint
+
+            - name: Run tests with coverage
+              run: npm run test:coverage
+
+            - name: Upload coverage reports
+              uses: codecov/codecov-action@v5
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  files: ./coverage/lcov.info
+                  flags: unittests
+                  name: codecov-umbrella
+                  fail_ci_if_error: false
+
+    build:
+        name: Build Application
+        runs-on: ${{ matrix.os }}
+        needs: test
+
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest, macos-latest]
+                include:
+                    - os: ubuntu-latest
+                      platform: linux
+                    - os: windows-latest
+                      platform: windows
+                    - os: macos-latest
+                      platform: macos
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # Linux: build via official Tauri Action (containerized)
+            - name: Build (Linux via Tauri Action)
+              if: matrix.os == 'ubuntu-latest'
+              uses: tauri-apps/tauri-action@v0
+              with:
+                  args: build
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+            # Windows/macOS: regular local toolchain
+            - name: Setup Node.js
+              if: matrix.os != 'ubuntu-latest'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+                  cache-dependency-path: "package.json"
+
+            - name: Install dependencies
+              if: matrix.os != 'ubuntu-latest'
+              run: npm ci
+
+            - name: Setup Rust
+              if: matrix.os != 'ubuntu-latest'
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Install Tauri CLI
+              if: matrix.os != 'ubuntu-latest'
+              run: npm install -g @tauri-apps/cli
+
+            - name: Build Tauri application
+              if: matrix.os != 'ubuntu-latest'
+              run: npm run tauri:build
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: readnlearn-${{ matrix.platform }}
+                  path: |
+                      src-tauri/target/release/bundle/
+                  retention-days: 30
+
+    security:
+        name: Security Audit
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+                  cache-dependency-path: "package.json"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run security audit
+              run: npm audit --audit-level=moderate
+
+            - name: Run cargo audit (Rust dependencies)
+              uses: rustsec/audit-check@v1
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
