@@ -98,8 +98,8 @@ jobs:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-            # Windows/macOS: regular local toolchain
-            - name: Setup Node.js
+            # Windows/macOS: also use official Tauri Action
+            - name: Setup Node.js (Non-Linux)
               if: matrix.os != 'ubuntu-latest'
               uses: actions/setup-node@v4
               with:
@@ -107,21 +107,13 @@ jobs:
                   cache: "npm"
                   cache-dependency-path: "package.json"
 
-            - name: Install dependencies
+            - name: Install dependencies (Non-Linux)
               if: matrix.os != 'ubuntu-latest'
               run: npm ci
 
-            - name: Setup Rust
+            - name: Build (Windows/macOS via Tauri Action)
               if: matrix.os != 'ubuntu-latest'
-              uses: dtolnay/rust-toolchain@stable
-
-            - name: Install Tauri CLI
-              if: matrix.os != 'ubuntu-latest'
-              run: npm install -g @tauri-apps/cli
-
-            - name: Build Tauri application
-              if: matrix.os != 'ubuntu-latest'
-              run: npm run tauri:build
+              uses: tauri-apps/tauri-action@v0
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
