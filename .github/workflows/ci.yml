@@ -10,7 +10,6 @@ jobs:
     test:
         name: Test & Coverage
         runs-on: ubuntu-latest
-
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -47,7 +46,6 @@ jobs:
         name: Build Application
         runs-on: ${{ matrix.os }}
         needs: test
-
         strategy:
             matrix:
                 os: [ubuntu-latest, windows-latest, macos-latest]
@@ -63,7 +61,7 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            # Ensure Node deps (including @tauri-apps/cli) are installed for Linux build
+            # ---------- Node + deps on each OS ----------
             - name: Setup Node.js (Linux)
               if: matrix.os == 'ubuntu-latest'
               uses: actions/setup-node@v4
@@ -76,6 +74,23 @@ jobs:
               if: matrix.os == 'ubuntu-latest'
               run: npm ci
 
+            - name: Setup Node.js (Non-Linux)
+              if: matrix.os != 'ubuntu-latest'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+                  cache-dependency-path: "package.json"
+
+            - name: Install dependencies (Non-Linux)
+              if: matrix.os != 'ubuntu-latest'
+              run: npm ci
+
+            # Ensure the Tauri JS CLI is available on ALL OSes (creates node_modules/.bin/tauri)
+            - name: Install Tauri CLI (local)
+              run: npm install --no-save @tauri-apps/cli@^2
+
+            # ---------- OS-specific prereqs ----------
             - name: Install Linux system dependencies
               if: matrix.os == 'ubuntu-latest'
               run: |
@@ -90,13 +105,13 @@ jobs:
                     libayatana-appindicator3-dev \
                     librsvg2-dev
 
+            # ---------- Build with Tauri Action (forces bundling) ----------
             # Linux
             - name: Build (Linux via Tauri Action)
               if: matrix.os == 'ubuntu-latest'
               id: tauri_build_linux
               uses: tauri-apps/tauri-action@v0
               with:
-                  # produce real desktop packages
                   args: --bundles appimage deb rpm
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -108,7 +123,6 @@ jobs:
               id: tauri_build_macos
               uses: tauri-apps/tauri-action@v0
               with:
-                  # build bundles; aarch64 runner will output arm64 artifacts
                   args: --bundles dmg app
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -120,12 +134,12 @@ jobs:
               id: tauri_build_windows
               uses: tauri-apps/tauri-action@v0
               with:
-                  # both NSIS installer and MSI if configured
                   args: --bundles nsis msi
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+            # ---------- Artifact collection & upload ----------
             - name: Gather built artifacts
               id: gather_artifacts
               shell: bash
@@ -142,73 +156,4 @@ jobs:
                   FILELIST="$(mktemp)"
 
                   # Temporarily relax pipefail so 'find' quirks don't abort the step
-                  set +o pipefail
-                  find "$ROOT" -path '*/release/bundle/*' -type f \
-                    \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.msi' -o -name '*.exe' \
-                       -o -name '*.zip' -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
-                    2>/dev/null | sort > "$FILELIST" || true
-                  set -o pipefail
-
-                  echo "Found $(wc -l < "$FILELIST" | tr -d ' ') files:"
-                  cat "$FILELIST" || true
-
-                  if [[ ! -s "$FILELIST" ]]; then
-                    echo "No artifacts to upload."
-                    exit 0
-                  fi
-
-                  {
-                    echo "paths<<EOF"
-                    cat "$FILELIST"
-                    echo "EOF"
-                  } >> "$GITHUB_OUTPUT"
-
-            - name: Upload artifacts
-              if: steps.gather_artifacts.outputs.paths != ''
-              uses: actions/upload-artifact@v4
-              with:
-                  name: readnlearn-${{ matrix.platform }}
-                  path: ${{ steps.gather_artifacts.outputs.paths }}
-                  if-no-files-found: error
-                  retention-days: 30
-
-    security:
-        name: Security Audit
-        runs-on: ubuntu-latest
-
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "npm"
-                  cache-dependency-path: "package.json"
-
-            - name: Install dependencies
-              run: npm ci
-
-            - name: Run security audit
-              run: npm audit --audit-level=moderate
-
-            - name: Setup Rust (for cargo-audit)
-              uses: dtolnay/rust-toolchain@stable
-
-            - name: Install cargo-audit
-              run: cargo install cargo-audit
-
-            - name: Run cargo audit (sqlite-only; ignore MySQL advisory)
-              run: cargo audit --ignore RUSTSEC-2023-0071
-              working-directory: ./src-tauri
-
-            - name: Setup Rust (for cargo-audit)
-              uses: dtolnay/rust-toolchain@stable
-
-            - name: Install cargo-audit
-              run: cargo install cargo-audit
-
-            - name: Run cargo audit (sqlite-only; ignore MySQL advisory)
-              run: cargo audit --ignore RUSTSEC-2023-0071
-              working-directory: ./src-tauri
+                  set +o
