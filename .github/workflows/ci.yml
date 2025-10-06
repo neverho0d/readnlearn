@@ -80,8 +80,6 @@ jobs:
             - name: Build (Linux via Tauri Action)
               if: matrix.os == 'ubuntu-latest'
               uses: tauri-apps/tauri-action@v0
-              with:
-                  args: build
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
