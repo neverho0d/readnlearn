@@ -120,32 +120,37 @@ jobs:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-            # Upload artifacts built by the Linux Tauri Action
-            - name: Upload artifacts (Linux)
-              if: matrix.os == 'ubuntu-latest' && steps.tauri_build_linux.outputs.artifactPaths != ''
-              uses: actions/upload-artifact@v4
-              with:
-                  name: readnlearn-${{ matrix.platform }}
-                  # artifactPaths is a JSON array -> parse + join for upload-artifact
-                  path: ${{ join(fromJson(steps.tauri_build_linux.outputs.artifactPaths), '\n') }}
-                  if-no-files-found: error
-                  retention-days: 30
-
-            # Upload artifacts built by the Windows/macOS Tauri Action
-            - name: Upload artifacts (Windows/macOS)
-              if: matrix.os != 'ubuntu-latest' && steps.tauri_build_nonlinux.outputs.artifactPaths != ''
-              uses: actions/upload-artifact@v4
-              with:
-                  name: readnlearn-${{ matrix.platform }}
-                  path: ${{ join(fromJson(steps.tauri_build_nonlinux.outputs.artifactPaths), '\n') }}
-                  if-no-files-found: error
-                  retention-days: 30
-
-            - name: Show artifact paths (debug)
-              if: always()
+            # After the Tauri build steps
+            - name: Gather built artifacts
+              id: gather_artifacts
+              shell: bash
               run: |
-                  echo "Linux:     ${{ steps.tauri_build_linux.outputs.artifactPaths }}"
-                  echo "Non-Linux: ${{ steps.tauri_build_nonlinux.outputs.artifactPaths }}"
+                  set -euo pipefail
+                  ROOT="${{ github.workspace }}/src-tauri/target/release/bundle"
+                  # Find common desktop bundle outputs across Linux/macOS/Windows
+                  mapfile -t FILES < <(find "$ROOT" -type f \
+                    \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.msi' -o -name '*.exe' \
+                       -name '*.zip' -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
+                    2>/dev/null | sort)
+
+                  echo "Found ${#FILES[@]} files under $ROOT"
+                  printf '%s\n' "${FILES[@]}"
+
+                  # Expose as a newline-separated output for upload-artifact
+                  {
+                    echo 'paths<<EOF'
+                    printf '%s\n' "${FILES[@]}"
+                    echo 'EOF'
+                  } >> "$GITHUB_OUTPUT"
+
+            - name: Upload artifacts
+              if: steps.gather_artifacts.outputs.paths != ''
+              uses: actions/upload-artifact@v4
+              with:
+                  name: readnlearn-${{ matrix.platform }}
+                  path: ${{ steps.gather_artifacts.outputs.paths }}
+                  if-no-files-found: error
+                  retention-days: 30
 
     security:
         name: Security Audit
