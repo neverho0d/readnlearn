@@ -122,57 +122,30 @@ jobs:
 
             # Upload artifacts built by the Linux Tauri Action
             - name: Upload artifacts (Linux)
-              if: matrix.os == 'ubuntu-latest'
+              if: matrix.os == 'ubuntu-latest' && steps.tauri_build_linux.outputs.artifactPaths != ''
               uses: actions/upload-artifact@v4
               with:
                   name: readnlearn-${{ matrix.platform }}
-                  # Use the paths returned by the action (no guessing)
-                  path: ${{ steps.tauri_build_linux.outputs.artifactPaths }}
+                  # artifactPaths is a JSON array -> parse + join for upload-artifact
+                  path: ${{ join(fromJson(steps.tauri_build_linux.outputs.artifactPaths), '\n') }}
                   if-no-files-found: error
                   retention-days: 30
 
             # Upload artifacts built by the Windows/macOS Tauri Action
             - name: Upload artifacts (Windows/macOS)
-              if: matrix.os != 'ubuntu-latest'
+              if: matrix.os != 'ubuntu-latest' && steps.tauri_build_nonlinux.outputs.artifactPaths != ''
               uses: actions/upload-artifact@v4
               with:
                   name: readnlearn-${{ matrix.platform }}
-                  path: ${{ steps.tauri_build_nonlinux.outputs.artifactPaths }}
+                  path: ${{ join(fromJson(steps.tauri_build_nonlinux.outputs.artifactPaths), '\n') }}
                   if-no-files-found: error
                   retention-days: 30
 
-            # - name: Upload artifacts (Linux)
-            #   if: matrix.os == 'ubuntu-latest'
-            #   uses: actions/upload-artifact@v4
-            #   with:
-            #       name: readnlearn-${{ matrix.platform }}
-            #       path: |
-            #           ${{ github.workspace }}/src-tauri/target/release/bundle/**
-            #       if-no-files-found: warn
-            #       retention-days: 30
-
-            # - name: Upload artifacts (macOS)
-            #   if: matrix.os == 'macos-latest'
-            #   uses: actions/upload-artifact@v4
-            #   with:
-            #       name: readnlearn-${{ matrix.platform }}
-            #       path: |
-            #           ${{ github.workspace }}/src-tauri/target/release/bundle/dmg/*.dmg
-            #           ${{ github.workspace }}/src-tauri/target/release/bundle/macos/*.app.tar.gz
-            #       if-no-files-found: warn
-            #       retention-days: 30
-
-            # - name: Upload artifacts (Windows)
-            #   if: matrix.os != 'ubuntu-latest'
-            #   uses: actions/upload-artifact@v4
-            #   with:
-            #       name: readnlearn-${{ matrix.platform }}
-            #       path: |
-            #           ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\msi\\*.msi
-            #           ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\nsis\\*.exe
-            #           ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\nsis\\*.zip
-            #       if-no-files-found: warn
-            #       retention-days: 30
+            - name: Show artifact paths (debug)
+              if: always()
+              run: |
+                  echo "Linux:     ${{ steps.tauri_build_linux.outputs.artifactPaths }}"
+                  echo "Non-Linux: ${{ steps.tauri_build_nonlinux.outputs.artifactPaths }}"
 
     security:
         name: Security Audit
