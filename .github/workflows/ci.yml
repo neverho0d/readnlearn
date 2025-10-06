@@ -118,12 +118,14 @@ jobs:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-            - name: Upload build artifacts (posix)
+            - name: Upload build artifacts (macOS)
               if: matrix.os != 'windows-latest'
               uses: actions/upload-artifact@v4
               with:
                   name: readnlearn-${{ matrix.platform }}
-                  path: ${{ github.workspace }}/src-tauri/target/release/bundle/**
+                  path: |
+                      ${{ github.workspace }}/src-tauri/target/release/bundle/dmg/*.dmg
+                      ${{ github.workspace }}/src-tauri/target/release/bundle/macos/*.app.tar.gz
                   if-no-files-found: warn
                   retention-days: 30
 
@@ -132,7 +134,10 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: readnlearn-${{ matrix.platform }}
-                  path: ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\**
+                  path: |
+                      ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\msi\\*.msi
+                      ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\nsis\\*.exe
+                      ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\nsis\\*.zip
                   if-no-files-found: warn
                   retention-days: 30
 
