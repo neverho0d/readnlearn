@@ -19,27 +19,27 @@ A local-first phrase book with cloud providers (LLM/MT/TTS) for memorizing via s
 
 1. Install dependencies:
 
-   ```bash
-   npm install
-   ```
+    ```bash
+    npm install
+    ```
 
 2. Set up environment variables:
 
-   ```bash
-   cp .env.example .env
-   # Edit .env with your API keys
-   ```
+    ```bash
+    cp .env.example .env
+    # Edit .env with your API keys
+    ```
 
 3. Run development server:
 
-   ```bash
-   npm run tauri:dev
-   ```
+    ```bash
+    npm run tauri:dev
+    ```
 
 4. Run tests:
-   ```bash
-   npm run test
-   ```
+    ```bash
+    npm run test
+    ```
 
 ## Project Structure
 

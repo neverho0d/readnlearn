@@ -2,13 +2,13 @@ import { describe, it, expect } from "vitest";
 import { getSampleTextForLanguage } from "./I18nContext";
 
 describe("getSampleTextForLanguage", () => {
-  it("returns English sample for unknown language", () => {
-    const sample = getSampleTextForLanguage("xx");
-    expect(sample).toContain("My Trip to Spain");
-  });
+    it("returns English sample for unknown language", () => {
+        const sample = getSampleTextForLanguage("xx");
+        expect(sample).toContain("My Trip to Spain");
+    });
 
-  it("returns Spanish sample for es", () => {
-    const sample = getSampleTextForLanguage("es");
-    expect(sample).toContain("Mi Viaje a España");
-  });
+    it("returns Spanish sample for es", () => {
+        const sample = getSampleTextForLanguage("es");
+        expect(sample).toContain("Mi Viaje a España");
+    });
 });

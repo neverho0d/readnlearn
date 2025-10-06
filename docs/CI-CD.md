@@ -173,19 +173,19 @@ Automated dependency updates are configured via `.github/dependabot.yml`:
 ### Common Issues
 
 1. **Build Failures**
-   - Check Node.js version compatibility
-   - Verify Tauri CLI is installed
-   - Ensure all dependencies are installed
+    - Check Node.js version compatibility
+    - Verify Tauri CLI is installed
+    - Ensure all dependencies are installed
 
 2. **Test Failures**
-   - Run tests locally first
-   - Check for environment-specific issues
-   - Verify test data and mocks
+    - Run tests locally first
+    - Check for environment-specific issues
+    - Verify test data and mocks
 
 3. **Security Audit Failures**
-   - Update vulnerable dependencies
-   - Use `npm audit fix` for automatic fixes
-   - Review and address manual fixes
+    - Update vulnerable dependencies
+    - Use `npm audit fix` for automatic fixes
+    - Review and address manual fixes
 
 ### Getting Help
 

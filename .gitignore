@@ -117,8 +117,7 @@ lerna-debug.log*
 .cursor
 .vscode
 .husky
-CURSOR_RULES.md
-CURSOR_RULES_REQS.md
+CURSOR_*
 dist
 dist-ssr
 *.local
