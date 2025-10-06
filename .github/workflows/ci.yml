@@ -93,6 +93,7 @@ jobs:
             # Linux: build via official Tauri Action (containerized)
             - name: Build (Linux via Tauri Action)
               if: matrix.os == 'ubuntu-latest'
+              id: tauri_build
               uses: tauri-apps/tauri-action@v0
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -113,31 +114,17 @@ jobs:
 
             - name: Build (Windows/macOS via Tauri Action)
               if: matrix.os != 'ubuntu-latest'
+              id: tauri_build_nonlinux
               uses: tauri-apps/tauri-action@v0
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-            - name: Upload build artifacts (macOS)
-              if: matrix.os != 'windows-latest'
+            - name: Upload build artifacts
               uses: actions/upload-artifact@v4
               with:
                   name: readnlearn-${{ matrix.platform }}
-                  path: |
-                      ${{ github.workspace }}/src-tauri/target/release/dmg/*.dmg
-                      ${{ github.workspace }}/src-tauri/target/release/macos/*.app.tar.gz
-                  if-no-files-found: warn
-                  retention-days: 30
-
-            - name: Upload build artifacts (windows)
-              if: matrix.os == 'windows-latest'
-              uses: actions/upload-artifact@v4
-              with:
-                  name: readnlearn-${{ matrix.platform }}
-                  path: |
-                      ${{ github.workspace }}\\src-tauri\\target\\release\\msi\\*.msi
-                      ${{ github.workspace }}\\src-tauri\\target\\release\\nsis\\*.exe
-                      ${{ github.workspace }}\\src-tauri\\target\\release\\nsis\\*.zip
+                  path: ${{ steps.tauri_build.outputs.artifactPaths }}
                   if-no-files-found: warn
                   retention-days: 30
 
