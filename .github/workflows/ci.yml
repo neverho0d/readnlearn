@@ -145,15 +145,81 @@ jobs:
               shell: bash
               run: |
                   set -euo pipefail
+                  shopt -s globstar nullglob
+
                   ROOT="${{ github.workspace }}/src-tauri/target"
 
-                  echo "Searching for bundles under: $ROOT/**/release/bundle"
-                  if ! compgen -G "$ROOT/**/release/bundle" > /dev/null; then
-                    echo "No bundle directories found."
+                  echo "Searching for bundles under: $ROOT/**/bundle/"
+                  FILELIST="$(mktemp)"
+
+                  # Find all common package types produced by Tauri
+                  find "$ROOT" -type f \
+                    \( -path '*/bundle/*' \) \
+                    \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.app' \
+                       -o -name '*.msi' -o -name '*.exe' -o -name '*.zip' \
+                       -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
+                    2>/dev/null | sort > "$FILELIST" || true
+
+                  COUNT=$(wc -l < "$FILELIST" | tr -d ' ')
+                  echo "Found $COUNT artifacts:"
+                  cat "$FILELIST" || true
+
+                  if [[ "$COUNT" -eq 0 ]]; then
+                    echo "No artifacts found to upload."
                     exit 0
                   fi
 
-                  FILELIST="$(mktemp)"
+                  {
+                    echo "paths<<EOF"
+                    cat "$FILELIST"
+                    echo "EOF"
+                  } >> "$GITHUB_OUTPUT"
 
-                  # Temporarily relax pipefail so 'find' quirks don't abort the step
-                  set +o
+            - name: Upload artifacts
+              if: steps.gather_artifacts.outputs.paths != ''
+              uses: actions/upload-artifact@v4
+              with:
+                  name: readnlearn-${{ matrix.platform }}
+                  path: ${{ steps.gather_artifacts.outputs.paths }}
+                  if-no-files-found: error
+                  retention-days: 30
+
+    security:
+        name: Security Audit
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+                  cache-dependency-path: "package.json"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run security audit
+              run: npm audit --audit-level=moderate
+
+            - name: Setup Rust (for cargo-audit)
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Install cargo-audit
+              run: cargo install cargo-audit
+
+            - name: Run cargo audit (sqlite-only; ignore MySQL advisory)
+              run: cargo audit --ignore RUSTSEC-2023-0071
+              working-directory: ./src-tauri
+
+            - name: Setup Rust (for cargo-audit)
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Install cargo-audit
+              run: cargo install cargo-audit
+
+            - name: Run cargo audit (sqlite-only; ignore MySQL advisory)
+              run: cargo audit --ignore RUSTSEC-2023-0071
+              working-directory: ./src-tauri
