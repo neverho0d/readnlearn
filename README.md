@@ -1,3 +1,7 @@
+---
+[![CI/CD Pipeline](https://github.com/neverho0d/readnlearn/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/neverho0d/readnlearn/actions/workflows/ci.yml)
+---
+
 # ReadNLearn - Text Reader with Learning Support
 
 A local-first phrase book with cloud providers (LLM/MT/TTS) for memorizing via short stories + cloze, then extend to readers (EPUB/PDF), local engines, and integrations (Anki, etc.).
