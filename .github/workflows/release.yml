@@ -27,15 +27,34 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            - name: Setup Node.js
+            # ---------- Node + deps on each OS ----------
+            - name: Setup Node.js (Linux)
+              if: matrix.os == 'ubuntu-latest'
               uses: actions/setup-node@v4
               with:
                   node-version: "20"
-                  cache: npm
-                  cache-dependency-path: package.json
+                  cache: "npm"
+                  cache-dependency-path: "package.json"
 
-            - name: Install dependencies
+            - name: Install dependencies (Linux)
+              if: matrix.os == 'ubuntu-latest'
               run: npm ci
+
+            - name: Setup Node.js (Non-Linux)
+              if: matrix.os != 'ubuntu-latest'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+                  cache-dependency-path: "package.json"
+
+            - name: Install dependencies (Non-Linux)
+              if: matrix.os != 'ubuntu-latest'
+              run: npm ci
+
+            # Ensure the Tauri JS CLI is available on ALL OSes (creates node_modules/.bin/tauri)
+            - name: Install Tauri CLI (local)
+              run: npm install --no-save @tauri-apps/cli@^2
 
             - name: Install Linux system dependencies
               if: matrix.os == 'ubuntu-latest'
@@ -51,27 +70,66 @@ jobs:
                     libayatana-appindicator3-dev \
                     librsvg2-dev
 
-            - name: Build (Tauri Action)
-              id: tauri
+            # Use the same per-OS bundle args as in CI
+            - name: Build (Linux via Tauri Action)
+              if: matrix.os == 'ubuntu-latest'
+              id: tauri_linux
               uses: tauri-apps/tauri-action@v0
               with:
-                  args: --bundles all
+                  args: --bundles appimage deb rpm
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-            - name: Gather artifacts
-              id: gather
+            - name: Build (macOS via Tauri Action)
+              if: matrix.os == 'macos-latest'
+              id: tauri_macos
+              uses: tauri-apps/tauri-action@v0
+              with:
+                  args: --bundles dmg app
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+            - name: Build (Windows via Tauri Action)
+              if: matrix.os == 'windows-latest'
+              id: tauri_windows
+              uses: tauri-apps/tauri-action@v0
+              with:
+                  args: --bundles nsis msi
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+            # ---------- Artifact collection & upload ----------
+            - name: Gather built artifacts
+              id: gather_artifacts
               shell: bash
               run: |
                   set -euo pipefail
+
                   ROOT="${{ github.workspace }}/src-tauri/target"
-                  FILELIST=$(mktemp)
-                  find "$ROOT" -type f \( -path '*/bundle/*' \) \
+
+                  echo "Searching for bundles under: $ROOT (recursive find)"
+                  FILELIST="$(mktemp)"
+
+                  # Find all common package types produced by Tauri
+                  find "$ROOT" -type f \
+                    \( -path '*/bundle/*' \) \
                     \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.app' \
-                       -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \
-                       -o -name '*.msi' -o -name '*.exe' -o -name '*.zip' \) \
+                       -o -name '*.msi' -o -name '*.exe' -o -name '*.zip' \
+                       -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
                     2>/dev/null | sort > "$FILELIST" || true
+
+                  COUNT=$(wc -l < "$FILELIST" | tr -d ' ')
+                  echo "Found $COUNT artifacts:"
+                  cat "$FILELIST" || true
+
+                  if [[ "$COUNT" -eq 0 ]]; then
+                    echo "No artifacts found to upload."
+                    exit 0
+                  fi
+
                   {
                     echo "paths<<EOF"
                     cat "$FILELIST"
@@ -81,7 +139,7 @@ jobs:
             - name: Upload release assets
               uses: softprops/action-gh-release@v2
               with:
-                  files: ${{ steps.gather.outputs.paths }}
+                  files: ${{ steps.gather_artifacts.outputs.paths }}
                   draft: false
                   prerelease: false
               env:
