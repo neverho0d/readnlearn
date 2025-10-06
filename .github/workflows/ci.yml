@@ -127,20 +127,32 @@ jobs:
               run: |
                   set -euo pipefail
                   ROOT="${{ github.workspace }}/src-tauri/target/release/bundle"
-                  # Find common desktop bundle outputs across Linux/macOS/Windows
-                  mapfile -t FILES < <(find "$ROOT" -type f \
-                    \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.msi' -o -name '*.exe' \
-                       -name '*.zip' -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
-                    2>/dev/null | sort)
 
-                  echo "Found ${#FILES[@]} files under $ROOT"
-                  printf '%s\n' "${FILES[@]}"
+                  echo "Searching for built artifacts under: $ROOT"
+
+                  # Create a temporary file list
+                  FILELIST=$(mktemp)
+                  find "$ROOT" -type f \
+                    \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.msi' -o -name '*.exe' \
+                       -o -name '*.zip' -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
+                    2>/dev/null | sort > "$FILELIST"
+
+                  echo "Found the following files:"
+                  cat "$FILELIST" || true
+
+                  COUNT=$(wc -l < "$FILELIST" | tr -d ' ')
+                  echo "Found $COUNT files."
+
+                  if [ "$COUNT" -eq 0 ]; then
+                    echo "No artifacts found under $ROOT"
+                    exit 0
+                  fi
 
                   # Expose as a newline-separated output for upload-artifact
                   {
-                    echo 'paths<<EOF'
-                    printf '%s\n' "${FILES[@]}"
-                    echo 'EOF'
+                    echo "paths<<EOF"
+                    cat "$FILELIST"
+                    echo "EOF"
                   } >> "$GITHUB_OUTPUT"
 
             - name: Upload artifacts
