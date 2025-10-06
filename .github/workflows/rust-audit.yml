@@ -23,6 +23,6 @@ jobs:
             - name: Install cargo-audit
               run: cargo install cargo-audit
 
-            - name: Run cargo audit (ignore RUSTSEC-2023-0071)
+            - name: Run cargo audit (sqlite-only; ignore MySQL advisory)
               run: cargo audit --ignore RUSTSEC-2023-0071
               working-directory: ./src-tauri
