@@ -129,26 +129,31 @@ jobs:
                   ROOT="${{ github.workspace }}/src-tauri/target/release/bundle"
 
                   echo "Searching for built artifacts under: $ROOT"
-
-                  # Create a temporary file list
-                  FILELIST=$(mktemp)
-                  find "$ROOT" -type f \
-                    \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.msi' -o -name '*.exe' \
-                       -o -name '*.zip' -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
-                    2>/dev/null | sort > "$FILELIST"
-
-                  echo "Found the following files:"
-                  cat "$FILELIST" || true
-
-                  COUNT=$(wc -l < "$FILELIST" | tr -d ' ')
-                  echo "Found $COUNT files."
-
-                  if [ "$COUNT" -eq 0 ]; then
-                    echo "No artifacts found under $ROOT"
+                  if [[ ! -d "$ROOT" ]]; then
+                    echo "Bundle dir not found. Nothing to upload."
                     exit 0
                   fi
 
-                  # Expose as a newline-separated output for upload-artifact
+                  FILELIST="$(mktemp)"
+
+                  # BSD 'find' can return non-zero even when that's harmless; don't let that fail the job.
+                  set +o pipefail
+                  find "$ROOT" -type f \
+                    \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.msi' -o -name '*.exe' \
+                       -o -name '*.zip' -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
+                    2>/dev/null | sort > "$FILELIST" || true
+                  set -o pipefail
+
+                  echo "Found $(wc -l < "$FILELIST" | tr -d ' ') files:"
+                  cat "$FILELIST" || true
+
+                  # Nothing? then skip upload gracefully
+                  if [[ ! -s "$FILELIST" ]]; then
+                    echo "No artifacts to upload."
+                    exit 0
+                  fi
+
+                  # Pass newline-separated paths to upload-artifact
                   {
                     echo "paths<<EOF"
                     cat "$FILELIST"
