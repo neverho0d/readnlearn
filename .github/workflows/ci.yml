@@ -124,8 +124,8 @@ jobs:
               with:
                   name: readnlearn-${{ matrix.platform }}
                   path: |
-                      ${{ github.workspace }}/src-tauri/target/release/bundle/dmg/*.dmg
-                      ${{ github.workspace }}/src-tauri/target/release/bundle/macos/*.app.tar.gz
+                      ${{ github.workspace }}/src-tauri/target/release/dmg/*.dmg
+                      ${{ github.workspace }}/src-tauri/target/release/macos/*.app.tar.gz
                   if-no-files-found: warn
                   retention-days: 30
 
@@ -135,9 +135,9 @@ jobs:
               with:
                   name: readnlearn-${{ matrix.platform }}
                   path: |
-                      ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\msi\\*.msi
-                      ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\nsis\\*.exe
-                      ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\nsis\\*.zip
+                      ${{ github.workspace }}\\src-tauri\\target\\release\\msi\\*.msi
+                      ${{ github.workspace }}\\src-tauri\\target\\release\\nsis\\*.exe
+                      ${{ github.workspace }}\\src-tauri\\target\\release\\nsis\\*.zip
                   if-no-files-found: warn
                   retention-days: 30
 
