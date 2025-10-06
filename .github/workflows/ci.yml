@@ -118,12 +118,22 @@ jobs:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-            - name: Upload build artifacts
+            - name: Upload build artifacts (posix)
+              if: matrix.os != 'windows-latest'
               uses: actions/upload-artifact@v4
               with:
                   name: readnlearn-${{ matrix.platform }}
-                  path: |
-                      ${{ github.workspace }}/src-tauri/target/release/bundle/**
+                  path: ${{ github.workspace }}/src-tauri/target/release/bundle/**
+                  if-no-files-found: warn
+                  retention-days: 30
+
+            - name: Upload build artifacts (windows)
+              if: matrix.os == 'windows-latest'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: readnlearn-${{ matrix.platform }}
+                  path: ${{ github.workspace }}\\src-tauri\\target\\release\\bundle\\**
+                  if-no-files-found: warn
                   retention-days: 30
 
     security:
