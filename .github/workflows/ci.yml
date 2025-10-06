@@ -145,11 +145,10 @@ jobs:
               shell: bash
               run: |
                   set -euo pipefail
-                  shopt -s globstar nullglob
 
                   ROOT="${{ github.workspace }}/src-tauri/target"
 
-                  echo "Searching for bundles under: $ROOT/**/bundle/"
+                  echo "Searching for bundles under: $ROOT (recursive find)"
                   FILELIST="$(mktemp)"
 
                   # Find all common package types produced by Tauri
