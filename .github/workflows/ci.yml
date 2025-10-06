@@ -123,8 +123,7 @@ jobs:
               with:
                   name: readnlearn-${{ matrix.platform }}
                   path: |
-                      src-tauri/target/release/bundle/**
-                      src-tauri\\target\\release\\bundle\\**
+                      ${{ github.workspace }}/src-tauri/target/release/bundle/**
                   retention-days: 30
 
     security:
