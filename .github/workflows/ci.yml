@@ -90,55 +90,60 @@ jobs:
                     libayatana-appindicator3-dev \
                     librsvg2-dev
 
-            # Linux: build via official Tauri Action (containerized)
+            # Linux
             - name: Build (Linux via Tauri Action)
               if: matrix.os == 'ubuntu-latest'
               id: tauri_build_linux
               uses: tauri-apps/tauri-action@v0
-              env:
-                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-            # Windows/macOS: also use official Tauri Action
-            - name: Setup Node.js (Non-Linux)
-              if: matrix.os != 'ubuntu-latest'
-              uses: actions/setup-node@v4
               with:
-                  node-version: "20"
-                  cache: "npm"
-                  cache-dependency-path: "package.json"
-
-            - name: Install dependencies (Non-Linux)
-              if: matrix.os != 'ubuntu-latest'
-              run: npm ci
-
-            - name: Build (Windows/macOS via Tauri Action)
-              if: matrix.os != 'ubuntu-latest'
-              id: tauri_build_nonlinux
-              uses: tauri-apps/tauri-action@v0
+                  # produce real desktop packages
+                  args: --bundles appimage deb rpm
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-            # After the Tauri build steps
+            # macOS
+            - name: Build (macOS via Tauri Action)
+              if: matrix.os == 'macos-latest'
+              id: tauri_build_macos
+              uses: tauri-apps/tauri-action@v0
+              with:
+                  # build bundles; aarch64 runner will output arm64 artifacts
+                  args: --bundles dmg app
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+            # Windows
+            - name: Build (Windows via Tauri Action)
+              if: matrix.os == 'windows-latest'
+              id: tauri_build_windows
+              uses: tauri-apps/tauri-action@v0
+              with:
+                  # both NSIS installer and MSI if configured
+                  args: --bundles nsis msi
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
             - name: Gather built artifacts
               id: gather_artifacts
               shell: bash
               run: |
                   set -euo pipefail
-                  ROOT="${{ github.workspace }}/src-tauri/target/release/bundle"
+                  ROOT="${{ github.workspace }}/src-tauri/target"
 
-                  echo "Searching for built artifacts under: $ROOT"
-                  if [[ ! -d "$ROOT" ]]; then
-                    echo "Bundle dir not found. Nothing to upload."
+                  echo "Searching for bundles under: $ROOT/**/release/bundle"
+                  if ! compgen -G "$ROOT/**/release/bundle" > /dev/null; then
+                    echo "No bundle directories found."
                     exit 0
                   fi
 
                   FILELIST="$(mktemp)"
 
-                  # BSD 'find' can return non-zero even when that's harmless; don't let that fail the job.
+                  # Temporarily relax pipefail so 'find' quirks don't abort the step
                   set +o pipefail
-                  find "$ROOT" -type f \
+                  find "$ROOT" -path '*/release/bundle/*' -type f \
                     \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.msi' -o -name '*.exe' \
                        -o -name '*.zip' -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
                     2>/dev/null | sort > "$FILELIST" || true
@@ -147,13 +152,11 @@ jobs:
                   echo "Found $(wc -l < "$FILELIST" | tr -d ' ') files:"
                   cat "$FILELIST" || true
 
-                  # Nothing? then skip upload gracefully
                   if [[ ! -s "$FILELIST" ]]; then
                     echo "No artifacts to upload."
                     exit 0
                   fi
 
-                  # Pass newline-separated paths to upload-artifact
                   {
                     echo "paths<<EOF"
                     cat "$FILELIST"
