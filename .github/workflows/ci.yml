@@ -84,7 +84,11 @@ jobs:
 
             - name: Install dependencies (Non-Linux)
               if: matrix.os != 'ubuntu-latest'
-              run: npm ci
+              shell: bash
+              run: |
+                  # Work around npm optional native deps bug on macOS/Windows with Rollup
+                  rm -f package-lock.json
+                  npm install
 
             # Ensure the Tauri JS CLI is available on ALL OSes (creates node_modules/.bin/tauri)
             - name: Install Tauri CLI (local)
