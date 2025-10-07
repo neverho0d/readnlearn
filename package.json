@@ -22,7 +22,8 @@
         "ci": "npm run type-check && npm run lint && npm run test:coverage",
         "ci:build": "npm run build && npm run tauri:build",
         "security:audit": "npm audit --audit-level=moderate",
-        "security:audit:fix": "npm audit fix"
+        "security:audit:fix": "npm audit fix",
+        "version:sync": "node scripts/version-sync.js"
     },
     "dependencies": {
         "@chakra-ui/icons": "^2.2.4",
