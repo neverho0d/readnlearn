@@ -43,6 +43,7 @@ try {
         execSync(`git tag -l "${tagName}"`, { stdio: "pipe" });
         console.log(`⚠️  Tag ${tagName} already exists. Skipping tag creation.`);
     } catch (error) {
+        console.error(`❌ Git tag ${tagName} creation failed: ${error.message}`);
         // Tag doesn't exist, create it
         execSync(`git tag -a ${tagName} -m "Release ${tagName}"`, { stdio: "inherit" });
         console.log(`✅ Git tag ${tagName} created successfully!`);

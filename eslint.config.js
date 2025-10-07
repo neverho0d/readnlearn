@@ -111,6 +111,18 @@ export default [
         },
     },
 
+    // Node runtime scripts (CommonJS)
+    {
+        files: ["scripts/**/*.cjs"],
+        languageOptions: {
+            parserOptions: { ecmaVersion: "latest", sourceType: "script" },
+            globals: { ...globals.node, console: "readonly" },
+        },
+        rules: {
+            // keep defaults; just provide node globals so no-undef doesn't fire
+        },
+    },
+
     // Base JS
     js.configs.recommended,
 ];

@@ -8,7 +8,7 @@ A local-first phrase book with cloud providers (LLM/MT/TTS) for memorizing via s
 
 ## Tech Stack
 
-- **Frontend**: React 18 + TypeScript + Chakra UI v3
+- **Frontend**: React 19 + TypeScript + Chakra UI v3
 - **Desktop**: Tauri (Rust-based)
 - **Database**: SQLite (better-sqlite3)
 - **State Management**: Zustand
@@ -37,6 +37,7 @@ A local-first phrase book with cloud providers (LLM/MT/TTS) for memorizing via s
     ```
 
 4. Run tests:
+
     ```bash
     npm run test
     ```
