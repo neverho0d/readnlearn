@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
-const path = require("path");
 
 // Read version from VERSION file
 const version = fs.readFileSync("VERSION", "utf8").trim();
