@@ -6,14 +6,12 @@ import { useTheme } from "../../lib/settings/ThemeContext";
 import { useAppMode, AppMode } from "../../lib/state/appMode";
 
 interface LanguageSettingsProps {
-    onLoadSampleText?: () => void;
     isLoading?: boolean;
     // eslint-disable-next-line no-unused-vars
-    onLoadFile?: (text: string) => void;
+    onLoadFile?: (text: string, filename?: string) => void;
 }
 
 export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
-    onLoadSampleText,
     isLoading = false,
     onLoadFile,
 }) => {
@@ -25,21 +23,47 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
 
     const handlePickFile = () => {
         if (onLoadFile && fileInputRef.current) {
-            fileInputRef.current.value = ""; // reset
-            fileInputRef.current.click();
-        } else if (onLoadSampleText) {
-            onLoadSampleText();
+            // Reset to ensure selecting the same file triggers onChange
+            fileInputRef.current.value = "";
+            // Prefer showPicker if supported (more reliable in some environments)
+            const anyInput = fileInputRef.current as unknown as {
+                showPicker?: () => void;
+            };
+            if (typeof anyInput.showPicker === "function") {
+                anyInput.showPicker();
+            } else {
+                fileInputRef.current.click();
+            }
         }
     };
 
     const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
         if (!onLoadFile) return;
         const file = e.target.files?.[0];
+        console.log("file", file);
         if (!file) return;
         const reader = new FileReader();
+        console.log("file", file.name);
         reader.onload = () => {
             const text = typeof reader.result === "string" ? reader.result : "";
-            onLoadFile(text);
+            console.log("file", file.name);
+            console.log("text", text.length);
+            onLoadFile(text, file.name);
+
+            // Persist last opened file path and name (for Tauri restore); no content
+            try {
+                const anyFile = file as unknown as { path?: string };
+                if (anyFile.path) {
+                    localStorage.setItem("readnlearn-last-file-path", anyFile.path);
+                } else {
+                    console.error("No path found for file", file, anyFile);
+                }
+                localStorage.setItem("readnlearn-last-file-name", file.name);
+                // Also keep last content as a fallback for environments where path is unavailable
+                localStorage.setItem("readnlearn-last-file-content", text);
+            } catch (e) {
+                console.error(e);
+            }
         };
         reader.readAsText(file);
     };
@@ -183,7 +207,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     {getLanguageName(settings.l1)} →{" "}
                     {settings.l2AutoDetect ? "Auto" : getLanguageName(settings.l2)}
                 </span>
-                {(onLoadSampleText || onLoadFile) && (
+                {onLoadFile && (
                     <button
                         onClick={handlePickFile}
                         disabled={isLoading}
@@ -200,7 +224,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                             gap: "4px",
                             opacity: isLoading ? 0.7 : 1,
                         }}
-                        title={t.loadSampleText}
+                        title={t.loadButton}
                     >
                         <svg
                             width="14"
@@ -218,7 +242,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                             <line x1="16" y1="17" x2="8" y2="17" />
                             <polyline points="10,9 9,9 8,9" />
                         </svg>
-                        {isLoading ? t.loadingText : t.loadButton}
+                        {t.loadButton}
                     </button>
                 )}
 

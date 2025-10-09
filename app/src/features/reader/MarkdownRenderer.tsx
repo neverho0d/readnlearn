@@ -1,5 +1,6 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
 interface MarkdownRendererProps {
     content: string;
@@ -8,7 +9,7 @@ interface MarkdownRendererProps {
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     return (
         <div style={{ lineHeight: 1.6 }}>
-            <ReactMarkdown>{content || ""}</ReactMarkdown>
+            <ReactMarkdown rehypePlugins={[rehypeRaw]}>{content || ""}</ReactMarkdown>
         </div>
     );
 };

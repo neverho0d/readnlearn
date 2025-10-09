@@ -9,7 +9,7 @@ interface AppModeState {
 }
 
 export const useAppMode = create<AppModeState>((set) => ({
-    mode: (localStorage.getItem("readnlearn-mode") as AppMode) || "reading",
+    mode: "reading",
     setMode: (m) => {
         localStorage.setItem("readnlearn-mode", m);
         set({ mode: m });

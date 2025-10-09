@@ -25,7 +25,6 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
 
     const handleSavePhrase = () => {
         if (!phrase.trim()) {
-            alert(t.phraseEmpty);
             return;
         }
         const parsedTags = tags
@@ -33,7 +32,6 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
             .map((s) => s.trim())
             .filter((s) => s.length > 0);
         onPhraseSelect({ phrase, tags: parsedTags, translation });
-        alert(`"${phrase}" ${t.phraseSaved}`);
         setTags("");
         onClear();
     };

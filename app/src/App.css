@@ -142,3 +142,17 @@ button {
         background-color: #0f0f0f69;
     }
 }
+
+/* Phrase anchoring styles */
+.phrase-anchor {
+    border-bottom: 2px dashed var(--primary);
+    text-decoration: none;
+    position: relative;
+}
+
+.phrase-marker {
+    color: var(--primary);
+    font-size: 0.7em;
+    margin-left: 2px;
+    font-weight: bold;
+}

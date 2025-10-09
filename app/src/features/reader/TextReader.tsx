@@ -3,7 +3,7 @@ import { useI18n, getSampleTextForLanguage } from "../../lib/i18n/I18nContext";
 import { useSettings } from "../../lib/settings/SettingsContext";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { PhraseSelector } from "./PhraseSelector";
-import { savePhrase } from "../../lib/db/phraseStore";
+import { savePhrase, generateContentHash } from "../../lib/db/phraseStore";
 
 interface TextReaderProps {
     content?: string;
@@ -11,6 +11,10 @@ interface TextReaderProps {
     onPhraseSelect?: (phrase: string, context: string) => void;
     onLoadSampleText?: () => void;
     isLoading?: boolean;
+    // eslint-disable-next-line no-unused-vars
+    onTextChange?: (text: string) => void;
+    sourceFile?: string;
+    savedPhrases?: Array<{ id: string; text: string; position: number }>;
 }
 
 export const TextReader: React.FC<TextReaderProps> = ({
@@ -18,6 +22,9 @@ export const TextReader: React.FC<TextReaderProps> = ({
     onPhraseSelect,
     onLoadSampleText,
     isLoading = false,
+    onTextChange,
+    sourceFile,
+    savedPhrases = [],
 }) => {
     const { t } = useI18n();
     const { settings } = useSettings();
@@ -27,6 +34,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
         return localStorage.getItem("readnlearn-instructions-dismissed") !== "true";
     });
     const [hasLoadedSample, setHasLoadedSample] = React.useState(false);
+    // savedPhrases are now passed as props from App.tsx
 
     // No direct textarea editing in reader-only mode; text is controlled via loaders
 
@@ -37,6 +45,15 @@ export const TextReader: React.FC<TextReaderProps> = ({
             setShowInstructions(false);
         }
     }, [content]);
+
+    // Notify parent of text changes
+    React.useEffect(() => {
+        if (onTextChange) {
+            onTextChange(text);
+        }
+    }, [text, onTextChange]);
+
+    // savedPhrases are now managed by App.tsx and passed as props
 
     const handleTextSelection = () => {
         const selection = window.getSelection();
@@ -51,6 +68,18 @@ export const TextReader: React.FC<TextReaderProps> = ({
         translation: string;
     }) => {
         const context = getContextAroundPhrase(payload.phrase, text);
+        // Compute stable (line, column) for the first exact/ci match
+        const idxExact = text.indexOf(payload.phrase);
+        const idx =
+            idxExact >= 0 ? idxExact : text.toLowerCase().indexOf(payload.phrase.toLowerCase());
+        let lineNo: number | undefined;
+        let colOffset: number | undefined;
+        if (idx >= 0) {
+            const before = text.slice(0, idx);
+            const lines = before.split(/\n/);
+            lineNo = lines.length; // 1-based line number
+            colOffset = lines[lines.length - 1].length; // 0-based column offset in line
+        }
         // Persist locally for now
         await savePhrase({
             lang: settings.l2AutoDetect ? "es" : settings.l2,
@@ -58,8 +87,30 @@ export const TextReader: React.FC<TextReaderProps> = ({
             translation: payload.translation,
             context,
             tags: payload.tags,
+            sourceFile: sourceFile,
+            contentHash: generateContentHash(text),
+            lineNo,
+            colOffset,
         });
+
+        // Debug logging
+        // if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development") {
+        //     console.log("Phrase saved:", {
+        //         phrase: payload.phrase,
+        //         textLength: text.length,
+        //         textPreview: text.substring(0, 100),
+        //         phraseInText: text.toLowerCase().includes(payload.phrase.toLowerCase()),
+        //     });
+        // }
+
         if (onPhraseSelect) onPhraseSelect(payload.phrase, context);
+
+        // Trigger the global event to update other components
+        try {
+            window.dispatchEvent(new CustomEvent("readnlearn:phrases-updated"));
+        } catch {
+            // Ignore dispatch errors in non-browser contexts
+        }
     };
 
     const getContextAroundPhrase = (phrase: string, fullText: string): string => {
@@ -68,6 +119,35 @@ export const TextReader: React.FC<TextReaderProps> = ({
         const start = Math.max(0, phraseIndex - 50);
         const end = Math.min(fullText.length, phraseIndex + phrase.length + 50);
         return fullText.substring(start, end);
+    };
+
+    // Render text with visual decorations for saved phrases
+    const renderTextWithPhrases = (
+        text: string,
+        phrases: Array<{ id: string; text: string; position: number }>,
+    ) => {
+        if (phrases.length === 0) return text;
+
+        // Process phrases in reverse order to maintain correct positions
+        const sortedPhrases = [...phrases].sort((a, b) => b.position - a.position);
+        let result = text;
+
+        for (const phrase of sortedPhrases) {
+            const start = Math.max(0, phrase.position);
+            const end = Math.min(result.length, start + phrase.text.length);
+
+            if (start >= 0 && end > start) {
+                // Use the original substring at this position to preserve casing/punctuation
+                const original = result.substring(start, end);
+                // Create decorated phrase with superscript marker
+                const decoratedPhrase = `<span class="phrase-anchor">${original}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+
+                // Replace the phrase in the text
+                result = result.substring(0, start) + decoratedPhrase + result.substring(end);
+            }
+        }
+
+        return result;
     };
 
     const isSampleText = (val: string): boolean => {
@@ -190,7 +270,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
                     onMouseUp={handleTextSelection}
                     onTouchEnd={handleTextSelection}
                 >
-                    <MarkdownRenderer content={text} />
+                    <MarkdownRenderer content={renderTextWithPhrases(text, savedPhrases)} />
                 </div>
 
                 {selectedText && (
