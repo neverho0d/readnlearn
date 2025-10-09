@@ -1,4 +1,5 @@
 import React from "react";
+import { useSettings } from "../../lib/settings/SettingsContext";
 import {
     ensureDb,
     loadPhrases,
@@ -38,6 +39,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
     forceEmptyWhenNoText = false,
     allPhrases = [],
 }) => {
+    const { settings } = useSettings();
     const [rows, setRows] = React.useState<PhraseRow[]>([]);
     const [loading, setLoading] = React.useState(true);
     // Per-phrase expand/collapse state for phrase and translation (must be declared before any early returns)
@@ -109,6 +111,37 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
         window.addEventListener(PHRASES_UPDATED_EVENT, handler);
         return () => window.removeEventListener(PHRASES_UPDATED_EVENT, handler);
     }, [refresh]);
+
+    // Listen for requests from the reader to blink a specific phrase card
+    React.useEffect(() => {
+        const onJump = (ev: Event) => {
+            const custom = ev as CustomEvent<{ marker?: string }>; // marker = first 4 chars of id
+            const marker = custom.detail?.marker || "";
+            if (!marker) return;
+            const match = rows.find((r) => r.id.startsWith(marker));
+            if (!match) return;
+            const el = document.getElementById(`phrase-card-${match.id}`) as HTMLDivElement | null;
+            if (!el) return;
+            // Clear any previous inline color to avoid stacking residuals
+            el.style.backgroundColor = "";
+            const computed = getComputedStyle(el).backgroundColor;
+            el.style.backgroundColor = "rgba(180,180,180,0.25)";
+            setTimeout(() => {
+                el.style.backgroundColor = computed;
+            }, 1000);
+            try {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+            } catch {
+                // ignore
+            }
+        };
+        window.addEventListener("readnlearn:jump-to-phrase", onJump as unknown as () => void);
+        return () =>
+            window.removeEventListener(
+                "readnlearn:jump-to-phrase",
+                onJump as unknown as () => void,
+            );
+    }, [rows]);
 
     // Remove functionality not needed in phrase card UI scope currently
 
@@ -246,7 +279,15 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
     }
 
     return (
-        <div style={{ padding: 16 }}>
+        <div
+            id="phrase-pane-root"
+            style={{
+                padding: 16,
+                background: "var(--bg)",
+                fontFamily: settings.font,
+                fontSize: settings.fontSize,
+            }}
+        >
             {onToggleFilter && (
                 <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
                     <label style={{ fontSize: "14px", color: "var(--muted)" }}>
@@ -283,11 +324,31 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                     return (
                         <div
                             key={r.id}
+                            id={`phrase-card-${r.id}`}
                             style={{
                                 border: "none",
                                 borderRadius: 8,
-                                background: "var(--panel)",
+                                background: "var(--bg)",
                                 padding: 12,
+                            }}
+                            onClick={(e) => {
+                                // Blink card when notified from text click
+                                const handler = (ev: Event) => {
+                                    const custom = ev as CustomEvent<{ marker: string }>;
+                                    if (r.id.startsWith(custom.detail?.marker || "")) {
+                                        const el = e.currentTarget as HTMLDivElement;
+                                        const original = el.style.backgroundColor;
+                                        el.style.backgroundColor = "rgba(180,180,180,0.25)";
+                                        setTimeout(() => {
+                                            el.style.backgroundColor = original || "var(--bg)";
+                                        }, 1000);
+                                    }
+                                };
+                                window.addEventListener(
+                                    "readnlearn:jump-to-phrase",
+                                    handler as unknown as () => void,
+                                    { once: true },
+                                );
                             }}
                         >
                             {/* Row 1: Phrase */}
@@ -297,8 +358,20 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                         color: "var(--primary)",
                                         fontSize: "0.7em",
                                         marginTop: 2,
+                                        cursor: "pointer",
                                     }}
                                     title={r.id}
+                                    onClick={() => {
+                                        try {
+                                            const ev = new CustomEvent(
+                                                "readnlearn:jump-to-phrase-in-text",
+                                                { detail: { id: r.id } },
+                                            );
+                                            window.dispatchEvent(ev);
+                                        } catch {
+                                            // ignore
+                                        }
+                                    }}
                                 >
                                     {phraseMarker}
                                 </span>
@@ -310,7 +383,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                             textOverflow: showFullPhrase ? "clip" : "ellipsis",
                                             maxWidth: "100%",
                                             wordBreak: showFullPhrase ? "break-word" : undefined,
-                                            cursor: showFullPhrase ? "auto" : "pointer",
+                                            cursor: "pointer",
                                         }}
                                         title={
                                             showFullPhrase ? "Click to collapse" : "Click to expand"
@@ -344,7 +417,8 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                             maxWidth: "100%",
                                             wordBreak: showFullTrans ? "break-word" : undefined,
                                             color: "var(--text)",
-                                            cursor: showFullTrans ? "auto" : "pointer",
+                                            cursor: "pointer",
+                                            fontSize: "0.92em",
                                         }}
                                         title={
                                             showFullTrans ? "Click to collapse" : "Click to expand"
@@ -372,7 +446,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                     >
                                         #
                                     </span>
-                                    <div style={{ flex: 1, color: "#7dd3fc" }}>
+                                    <div style={{ flex: 1, color: "#7dd3fc", fontSize: "0.92em" }}>
                                         {`#${tags.join(", #")}`}
                                     </div>
                                     <div style={{ width: 24 }} />

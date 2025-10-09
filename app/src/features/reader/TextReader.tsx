@@ -53,6 +53,42 @@ export const TextReader: React.FC<TextReaderProps> = ({
         }
     }, [text, onTextChange]);
 
+    // Listen to clicks from dictionary marker → blink phrase in text
+    React.useEffect(() => {
+        const handler = (e: Event) => {
+            const custom = e as CustomEvent<{ id: string }>;
+            const phrase = savedPhrases.find((p) => p.id === custom.detail?.id);
+            if (!phrase) return;
+            // Find the displayed element: we used phrase.id substring(0,4) as marker; use position to locate anchor
+            // Build a CSS selector for anchors near the text position
+            const anchors = Array.from(
+                document.querySelectorAll(".phrase-anchor"),
+            ) as HTMLElement[];
+            if (!anchors.length) return;
+            // Choose the anchor whose marker sup text matches
+            const target = anchors.find((a) => {
+                const sup = a.querySelector(".phrase-marker");
+                return sup && sup.textContent === phrase.id.substring(0, 4);
+            });
+            if (target) {
+                // Reset any previous inline style and use computed color as baseline
+                target.style.backgroundColor = "";
+                const computed = getComputedStyle(target).backgroundColor;
+                target.style.backgroundColor = "rgba(180,180,180,0.35)";
+                setTimeout(() => {
+                    target.style.backgroundColor = computed;
+                }, 1000);
+                target.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        };
+        window.addEventListener("readnlearn:jump-to-phrase-in-text", handler as EventListener);
+        return () =>
+            window.removeEventListener(
+                "readnlearn:jump-to-phrase-in-text",
+                handler as EventListener,
+            );
+    }, [savedPhrases]);
+
     // savedPhrases are now managed by App.tsx and passed as props
 
     const handleTextSelection = () => {
@@ -81,12 +117,15 @@ export const TextReader: React.FC<TextReaderProps> = ({
             colOffset = lines[lines.length - 1].length; // 0-based column offset in line
         }
         // Persist locally for now
+        // Cleanup tags: strip leading '#'
+        const cleanedTags = (payload.tags || []).map((t) => t.replace(/^#+/u, ""));
+
         await savePhrase({
             lang: settings.l2AutoDetect ? "es" : settings.l2,
             text: payload.phrase,
             translation: payload.translation,
             context,
-            tags: payload.tags,
+            tags: cleanedTags,
             sourceFile: sourceFile,
             contentHash: generateContentHash(text),
             lineNo,
@@ -266,6 +305,8 @@ export const TextReader: React.FC<TextReaderProps> = ({
                         padding: "16px",
                         minHeight: "400px",
                         cursor: "text",
+                        fontFamily: settings.font,
+                        fontSize: settings.fontSize,
                     }}
                     onMouseUp={handleTextSelection}
                     onTouchEnd={handleTextSelection}

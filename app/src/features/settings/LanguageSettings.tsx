@@ -68,6 +68,25 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
         reader.readAsText(file);
     };
 
+    const [showL1Menu, setShowL1Menu] = React.useState(false);
+    const [showL2Menu, setShowL2Menu] = React.useState(false);
+
+    const closeMenus = () => {
+        setShowL1Menu(false);
+        setShowL2Menu(false);
+    };
+
+    React.useEffect(() => {
+        const onDocClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (!target?.closest?.(".lang-indicator") && !target?.closest?.(".lang-menu")) {
+                closeMenus();
+            }
+        };
+        window.addEventListener("click", onDocClick);
+        return () => window.removeEventListener("click", onDocClick);
+    }, []);
+
     return (
         <div
             className="language-settings"
@@ -87,103 +106,10 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                 fontSize: "14px",
             }}
         >
-            {/* Language Selectors */}
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                {/* L1 (Native Language) */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <label style={{ color: "#a0aec0", fontSize: "12px", fontWeight: 500 }}>
-                        {t.l1Label}
-                    </label>
-                    <select
-                        value={settings.l1}
-                        onChange={(e) => updateSettings({ l1: e.target.value })}
-                        style={{
-                            backgroundColor: "#2d3748",
-                            color: "white",
-                            border: "1px solid #4a5568",
-                            borderRadius: "4px",
-                            padding: "4px 8px",
-                            fontSize: "12px",
-                            minWidth: "120px",
-                            appearance: "none",
-                            backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a0aec0' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
-                            backgroundPosition: "right 8px center",
-                            backgroundRepeat: "no-repeat",
-                            backgroundSize: "16px",
-                            paddingRight: "32px",
-                        }}
-                    >
-                        {LANGUAGES.map((lang) => (
-                            <option
-                                key={lang.code}
-                                value={lang.code}
-                                style={{ backgroundColor: "#2d3748", color: "white" }}
-                            >
-                                {lang.nativeName}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+            {/* Removed old controls; using compact indicator only */}
 
-                {/* L2 (Target Language) */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <label style={{ color: "#a0aec0", fontSize: "12px", fontWeight: 500 }}>
-                        {t.l2Label}
-                    </label>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <input
-                            type="checkbox"
-                            id="l2-autodetect"
-                            checked={settings.l2AutoDetect}
-                            onChange={(e) => updateSettings({ l2AutoDetect: e.target.checked })}
-                            style={{ margin: 0 }}
-                        />
-                        <label
-                            htmlFor="l2-autodetect"
-                            style={{ fontSize: "12px", color: "#a0aec0" }}
-                        >
-                            {t.autoDetect}
-                        </label>
-                    </div>
-                    <select
-                        value={settings.l2}
-                        onChange={(e) => updateSettings({ l2: e.target.value })}
-                        disabled={settings.l2AutoDetect}
-                        style={{
-                            backgroundColor: settings.l2AutoDetect ? "#1a202c" : "#2d3748",
-                            color: settings.l2AutoDetect ? "#718096" : "white",
-                            border: "1px solid #4a5568",
-                            borderRadius: "4px",
-                            padding: "4px 8px",
-                            fontSize: "12px",
-                            minWidth: "120px",
-                            cursor: settings.l2AutoDetect ? "not-allowed" : "pointer",
-                            appearance: "none",
-                            backgroundImage: settings.l2AutoDetect
-                                ? "none"
-                                : `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a0aec0' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
-                            backgroundPosition: "right 8px center",
-                            backgroundRepeat: "no-repeat",
-                            backgroundSize: "16px",
-                            paddingRight: "32px",
-                        }}
-                    >
-                        {LANGUAGES.map((lang) => (
-                            <option
-                                key={lang.code}
-                                value={lang.code}
-                                style={{ backgroundColor: "#2d3748", color: "white" }}
-                            >
-                                {lang.nativeName}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            {/* Mode switch, current language, and Load */}
+            {/* Left section: mode switch */}
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                {/* Mode switch */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <select
                         value={mode}
@@ -202,11 +128,233 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                         <option value="learning">Learning</option>
                     </select>
                 </div>
+            </div>
 
-                <span style={{ color: "#a0aec0", fontSize: "12px" }}>
-                    {getLanguageName(settings.l1)} →{" "}
-                    {settings.l2AutoDetect ? "Auto" : getLanguageName(settings.l2)}
-                </span>
+            {/* Right section: languages + font + actions */}
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                {/* Font selector */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <label style={{ color: "#a0aec0", fontSize: 12 }}>Font</label>
+                    <select
+                        value={settings.font}
+                        onChange={(e) => updateSettings({ font: e.target.value })}
+                        style={{
+                            background: "#1f2937",
+                            color: "#e5e7eb",
+                            border: "1px solid #374151",
+                            borderRadius: 4,
+                            padding: "4px 8px",
+                            fontSize: 12,
+                        }}
+                        title="Reader font"
+                    >
+                        <option value="InterVarLocal, Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif">
+                            Inter
+                        </option>
+                        <option value="NotoSansLocal, Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif">
+                            Noto Sans
+                        </option>
+                        <option value="SourceSerifLocal, Source Serif Pro, Georgia, Cambria, Times New Roman, Times, serif">
+                            Source Serif Pro
+                        </option>
+                        <option value="MerriweatherLocal, Merriweather, Georgia, Cambria, Times New Roman, Times, serif">
+                            Merriweather
+                        </option>
+                    </select>
+                </div>
+
+                {/* Font size control */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button
+                        title="Smaller (A-)"
+                        onClick={() =>
+                            updateSettings({ fontSize: Math.max(12, settings.fontSize - 1) })
+                        }
+                        style={{
+                            background: "transparent",
+                            color: "var(--topbar-text)",
+                            border: "none",
+                            borderRadius: 4,
+                            padding: "2px 6px",
+                            fontSize: 12,
+                            cursor: "pointer",
+                        }}
+                    >
+                        A-
+                    </button>
+                    <button
+                        title="Larger (A+)"
+                        onClick={() =>
+                            updateSettings({ fontSize: Math.min(22, settings.fontSize + 1) })
+                        }
+                        style={{
+                            background: "transparent",
+                            color: "var(--topbar-text)",
+                            border: "none",
+                            borderRadius: 4,
+                            padding: "2px 6px",
+                            fontSize: 12,
+                            cursor: "pointer",
+                        }}
+                    >
+                        A+
+                    </button>
+                </div>
+                {/* Compact clickable indicator */}
+                <div className="lang-indicator" style={{ position: "relative" }}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowL1Menu((s) => !s);
+                            setShowL2Menu(false);
+                        }}
+                        style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "var(--topbar-text)",
+                            cursor: "pointer",
+                            padding: "4px 8px",
+                            fontSize: 12,
+                        }}
+                        onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)")
+                        }
+                        onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = "transparent")
+                        }
+                        title={t.l1Label}
+                    >
+                        {getLanguageName(settings.l1)}
+                    </button>
+                    <span style={{ color: "#a0aec0", marginRight: 6, marginLeft: 2 }}>→</span>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowL2Menu((s) => !s);
+                            setShowL1Menu(false);
+                        }}
+                        style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "var(--topbar-text)",
+                            cursor: "pointer",
+                            padding: "4px 8px",
+                            fontSize: 12,
+                        }}
+                        onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)")
+                        }
+                        onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = "transparent")
+                        }
+                        title={t.l2Label}
+                    >
+                        {settings.l2AutoDetect ? "Auto" : getLanguageName(settings.l2)}
+                    </button>
+
+                    {showL1Menu && (
+                        <div
+                            className="lang-menu"
+                            style={{
+                                position: "absolute",
+                                top: 30,
+                                left: 0,
+                                background: "#1f2937",
+                                border: "1px solid #374151",
+                                borderRadius: 6,
+                                padding: 6,
+                                maxHeight: 260,
+                                overflow: "auto",
+                                boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+                                zIndex: 2000,
+                                minWidth: 180,
+                            }}
+                        >
+                            {LANGUAGES.map((lang) => (
+                                <button
+                                    key={`l1-${lang.code}`}
+                                    onClick={() => {
+                                        updateSettings({ l1: lang.code });
+                                        closeMenus();
+                                    }}
+                                    style={{
+                                        display: "block",
+                                        width: "100%",
+                                        textAlign: "left",
+                                        background: "transparent",
+                                        border: "none",
+                                        color: "#e5e7eb",
+                                        padding: "6px 8px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {lang.nativeName}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {showL2Menu && (
+                        <div
+                            className="lang-menu"
+                            style={{
+                                position: "absolute",
+                                top: 30,
+                                left: 120,
+                                background: "#1f2937",
+                                border: "1px solid #374151",
+                                borderRadius: 6,
+                                padding: 6,
+                                maxHeight: 260,
+                                overflow: "auto",
+                                boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+                                zIndex: 2000,
+                                minWidth: 200,
+                            }}
+                        >
+                            <button
+                                onClick={() => {
+                                    updateSettings({ l2AutoDetect: true });
+                                    closeMenus();
+                                }}
+                                style={{
+                                    display: "block",
+                                    width: "100%",
+                                    textAlign: "left",
+                                    background: "transparent",
+                                    border: "none",
+                                    color: "#e5e7eb",
+                                    padding: "6px 8px",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                }}
+                            >
+                                Auto
+                            </button>
+                            {LANGUAGES.map((lang) => (
+                                <button
+                                    key={`l2-${lang.code}`}
+                                    onClick={() => {
+                                        updateSettings({ l2AutoDetect: false, l2: lang.code });
+                                        closeMenus();
+                                    }}
+                                    style={{
+                                        display: "block",
+                                        width: "100%",
+                                        textAlign: "left",
+                                        background: "transparent",
+                                        border: "none",
+                                        color: "#e5e7eb",
+                                        padding: "6px 8px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {lang.nativeName}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
                 {onLoadFile && (
                     <button
                         onClick={handlePickFile}

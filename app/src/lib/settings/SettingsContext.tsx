@@ -4,6 +4,8 @@ interface SettingsState {
     l1: string; // UI language
     l2: string; // target language
     l2AutoDetect: boolean;
+    font: string; // UI reading font family
+    fontSize: number; // base font size in px
 }
 
 interface SettingsContextType {
@@ -18,6 +20,8 @@ const DEFAULT_SETTINGS: SettingsState = {
     l1: "en",
     l2: "es",
     l2AutoDetect: false,
+    font: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif",
+    fontSize: 16,
 };
 
 const LANGUAGES: { code: string; name: string; nativeName: string }[] = [

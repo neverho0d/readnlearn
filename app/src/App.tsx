@@ -173,8 +173,20 @@ function MainContent(props: {
         }
     }, []);
 
-    // Listen for phrase updates to refresh the list
+    // One-time migration and phrase updates
     React.useEffect(() => {
+        (async () => {
+            try {
+                const { migrateLocalStorageToSqlite } = await import("./lib/db/phraseStore");
+                const res = await migrateLocalStorageToSqlite();
+                if (res.moved > 0) {
+                    void loadSavedPhrases();
+                    void loadAllPhrases();
+                }
+            } catch (e) {
+                console.error("Migration error:", e);
+            }
+        })();
         const handlePhraseUpdate = () => {
             void loadSavedPhrases();
             void loadAllPhrases();
@@ -217,6 +229,13 @@ function MainContent(props: {
     // }, [currentText, mode]);
     const containerRef = useRef<HTMLDivElement>(null);
     const [leftRatio, setLeftRatio] = useSplitRatio();
+    const [phrasesCollapsed, setPhrasesCollapsed] = useState<boolean>(() => {
+        try {
+            return localStorage.getItem("readnlearn-phrases-collapsed") === "true";
+        } catch {
+            return false;
+        }
+    });
     const [dragging, setDragging] = useState(false);
 
     useEffect(() => {
@@ -237,6 +256,42 @@ function MainContent(props: {
             window.removeEventListener("mouseup", onUp);
         };
     }, [dragging, setLeftRatio]);
+
+    // Persist collapsed state
+    useEffect(() => {
+        try {
+            localStorage.setItem("readnlearn-phrases-collapsed", String(phrasesCollapsed));
+        } catch {
+            // ignore
+        }
+    }, [phrasesCollapsed]);
+
+    // Ensure pane expands when a phrase jump is requested
+    useEffect(() => {
+        const onJump = (ev: Event) => {
+            if (phrasesCollapsed) {
+                setPhrasesCollapsed(false);
+                // Re-dispatch after layout so the card can scroll/blink
+                const original = ev as CustomEvent<any>;
+                setTimeout(() => {
+                    try {
+                        const again = new CustomEvent("readnlearn:jump-to-phrase", {
+                            detail: original.detail,
+                        });
+                        window.dispatchEvent(again);
+                    } catch {
+                        // ignore
+                    }
+                }, 150);
+            }
+        };
+        window.addEventListener("readnlearn:jump-to-phrase", onJump as unknown as () => void);
+        return () =>
+            window.removeEventListener(
+                "readnlearn:jump-to-phrase",
+                onJump as unknown as () => void,
+            );
+    }, [phrasesCollapsed]);
     // Persist and restore scroll position of the left reader pane
     useEffect(() => {
         const el = containerRef.current?.querySelector(
@@ -279,7 +334,7 @@ function MainContent(props: {
                 >
                     <div
                         style={{
-                            flex: leftRatio,
+                            flex: phrasesCollapsed ? 1 : leftRatio,
                             minWidth: 0,
                             height: "100%",
                             overflow: "auto",
@@ -301,21 +356,54 @@ function MainContent(props: {
                         style={{
                             width: 8,
                             cursor: "col-resize",
-                            background: "var(--border)",
+                            backgroundColor: "transparent",
+                            backgroundImage:
+                                "radial-gradient(var(--border) 1px, transparent 1.5px)",
+                            backgroundSize: "8px 8px",
+                            backgroundRepeat: "repeat",
                             alignSelf: "stretch",
+                            position: "relative",
                         }}
                         title="Drag to resize"
-                    />
+                    >
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setPhrasesCollapsed((s) => !s);
+                            }}
+                            title={phrasesCollapsed ? "Expand phrases" : "Collapse phrases"}
+                            style={{
+                                position: "absolute",
+                                top: 6,
+                                left: "50%",
+                                transform: "translateX(-50%)",
+                                width: 16,
+                                height: 16,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                border: "none",
+                                borderRadius: 4,
+                                background: "transparent",
+                                color: "var(--muted)",
+                                cursor: "pointer",
+                                padding: 0,
+                            }}
+                        >
+                            {phrasesCollapsed ? "❮" : "❯"}
+                        </button>
+                    </div>
                     <div
                         style={{
-                            flex: 1 - leftRatio,
-                            minWidth: 280,
-                            maxWidth: 520,
-                            background: "var(--panel)",
+                            flex: phrasesCollapsed ? 0 : 1 - leftRatio,
+                            minWidth: phrasesCollapsed ? 0 : 280,
+                            maxWidth: phrasesCollapsed ? 0 : 520,
+                            background: "var(--bg)",
                             border: "none",
                             borderRadius: 0,
-                            padding: 12,
+                            padding: phrasesCollapsed ? 0 : 12,
                             height: "100%",
+                            overflow: "hidden",
                         }}
                     >
                         <div

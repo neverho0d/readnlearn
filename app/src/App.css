@@ -11,14 +11,15 @@
 }
 
 :root[data-theme="dark"] {
-    --bg: #0f172a;
-    --panel: #111827;
+    /* Neutral gray palette (no blue bias) */
+    --bg: #0f1115;
+    --panel: #14161a;
     --text: #e5e7eb;
-    --muted: #9ca3af;
-    --border: #374151;
-    --primary: #60a5fa;
-    --primary-contrast: #0b1020;
-    --topbar-bg: #0b1020;
+    --muted: #a1a1aa;
+    --border: #31343a;
+    --primary: #9ca3af; /* subtle gray for accents */
+    --primary-contrast: #0f1115;
+    --topbar-bg: #0e1013;
     --topbar-text: #e5e7eb;
 }
 
@@ -143,11 +144,42 @@ button {
     }
 }
 
+/* Local font faces (self-hosted). You can drop TTF/OTF/WOFF2 files in app/assets/fonts */
+@font-face {
+    font-family: "InterVarLocal";
+    src: url("../assets/fonts/Inter-Variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "SourceSerifLocal";
+    src: url("../assets/fonts/SourceSerifPro-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "MerriweatherLocal";
+    src: url("../assets/fonts/Merriweather-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "NotoSansLocal";
+    src: url("../assets/fonts/NotoSans-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* Phrase anchoring styles */
 .phrase-anchor {
-    border-bottom: 2px dashed var(--primary);
+    border-bottom: 1px dashed #a3a3a3; /* thinner, light grey */
     text-decoration: none;
     position: relative;
+    cursor: pointer; /* clickable in main pane */
 }
 
 .phrase-marker {
