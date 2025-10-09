@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { DictionaryView } from "./DictionaryView";
+import { DictionaryView } from "../../../../src/features/phrases/DictionaryView";
+import { SettingsProvider } from "../../../../src/lib/settings/SettingsContext";
+import { I18nProvider } from "../../../../src/lib/i18n/I18nContext";
+import { ThemeProvider } from "../../../../src/lib/settings/ThemeContext";
 
 // This test covers the localStorage fallback only (no SQL plugin in test env)
 
@@ -10,7 +13,15 @@ beforeEach(() => {
 
 describe("DictionaryView", () => {
     it("shows empty state and then data from localStorage", async () => {
-        render(<DictionaryView />);
+        render(
+            <SettingsProvider>
+                <ThemeProvider>
+                    <I18nProvider>
+                        <DictionaryView />
+                    </I18nProvider>
+                </ThemeProvider>
+            </SettingsProvider>,
+        );
         expect(await screen.findByText(/No phrases yet/i)).toBeInTheDocument();
 
         // seed one item
@@ -30,7 +41,15 @@ describe("DictionaryView", () => {
         );
 
         // re-render to simulate navigation refresh
-        render(<DictionaryView />);
+        render(
+            <SettingsProvider>
+                <ThemeProvider>
+                    <I18nProvider>
+                        <DictionaryView />
+                    </I18nProvider>
+                </ThemeProvider>
+            </SettingsProvider>,
+        );
         expect(await screen.findByText("hola")).toBeInTheDocument();
     });
 });

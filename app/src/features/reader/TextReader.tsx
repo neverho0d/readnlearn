@@ -178,8 +178,8 @@ export const TextReader: React.FC<TextReaderProps> = ({
             if (start >= 0 && end > start) {
                 // Use the original substring at this position to preserve casing/punctuation
                 const original = result.substring(start, end);
-                // Create decorated phrase with superscript marker
-                const decoratedPhrase = `<span class="phrase-anchor">${original}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+                // Create decorated phrase with superscript marker and data attribute for scroll following
+                const decoratedPhrase = `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${original}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
 
                 // Replace the phrase in the text
                 result = result.substring(0, start) + decoratedPhrase + result.substring(end);
@@ -299,6 +299,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
                 )}
 
                 <div
+                    className="main-pane"
                     style={{
                         border: "none",
                         borderRadius: "8px",

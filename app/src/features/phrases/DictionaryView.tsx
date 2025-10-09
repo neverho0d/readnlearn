@@ -29,6 +29,10 @@ interface DictionaryViewProps {
     forceEmptyWhenNoText?: boolean;
     // For dictionary mode: load all phrases with full details
     allPhrases?: PhraseRow[];
+    // Scroll-following props
+    followText?: boolean;
+    visiblePhrases?: Set<string>;
+    onFollowTextToggle?: (checked: boolean) => void;
 }
 
 export const DictionaryView: React.FC<DictionaryViewProps> = ({
@@ -38,6 +42,9 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
     savedPhrases = [],
     forceEmptyWhenNoText = false,
     allPhrases = [],
+    followText = false,
+    visiblePhrases = new Set(),
+    onFollowTextToggle,
 }) => {
     const { settings } = useSettings();
     const [rows, setRows] = React.useState<PhraseRow[]>([]);
@@ -167,7 +174,39 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
 
         // If text is loaded and we want to filter by current text
         if (!showAllPhrases) {
+            // Debug logging
+            if (
+                typeof process !== "undefined" &&
+                process.env &&
+                process.env.NODE_ENV === "development"
+            ) {
+                console.log("DictionaryView filtering:", {
+                    followText,
+                    visiblePhrasesSize: visiblePhrases.size,
+                    visiblePhrases: Array.from(visiblePhrases),
+                    totalRows: rows.length,
+                    filterTextLength: filterText.length,
+                    rowIds: rows.map((r) => r.id),
+                });
+            }
+
+            console.log("🔍 Filtering phrases:", {
+                followText,
+                visiblePhrasesSize: visiblePhrases.size,
+                visiblePhrases: Array.from(visiblePhrases),
+                totalRows: rows.length,
+            });
+
             const filtered = rows.filter((row) => {
+                // If followText is enabled, only show phrases that are currently visible
+                if (followText) {
+                    const isVisible = visiblePhrases.has(row.id);
+                    console.log(
+                        `🔍 Phrase ${row.id} (${row.text.substring(0, 30)}...): visible=${isVisible}`,
+                    );
+                    return isVisible;
+                }
+
                 const phrase = row.text.toLowerCase().trim();
                 const text = filterText.toLowerCase();
 
@@ -259,7 +298,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
 
         // Show all phrases
         return rows;
-    }, [rows, filterText, showAllPhrases, savedPhrases]);
+    }, [rows, filterText, showAllPhrases, savedPhrases, followText, visiblePhrases]);
 
     if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
 
@@ -275,7 +314,11 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
 
     // If text is loaded but no matching phrases found
     if (filterText.trim() && !filteredRows.length) {
-        return <div style={{ padding: 16 }}>No phrases found in current text.</div>;
+        return (
+            <div style={{ padding: 16, fontSize: "0.9em", fontStyle: "italic" }}>
+                No phrases found in current view.
+            </div>
+        );
     }
 
     return (
@@ -526,6 +569,44 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                     );
                 })}
             </div>
+
+            {/* Follow text toggle - only show in reading mode */}
+            {onFollowTextToggle && (
+                <div
+                    style={{
+                        position: "sticky",
+                        bottom: 0,
+                        background: "var(--bg)",
+                        borderTop: "1px solid var(--border)",
+                        padding: "8px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        fontSize: "12px",
+                        color: "var(--muted)",
+                    }}
+                >
+                    <input
+                        type="checkbox"
+                        id="follow-text"
+                        checked={followText}
+                        onChange={(e) => onFollowTextToggle(e.target.checked)}
+                        style={{
+                            margin: 0,
+                            cursor: "pointer",
+                        }}
+                    />
+                    <label
+                        htmlFor="follow-text"
+                        style={{
+                            cursor: "pointer",
+                            userSelect: "none",
+                        }}
+                    >
+                        Follow text
+                    </label>
+                </div>
+            )}
         </div>
     );
 };

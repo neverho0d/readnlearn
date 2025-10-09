@@ -1,27 +1,71 @@
-// Simple persistence for phrases
-// Uses Tauri SQL plugin when available; falls back to localStorage
+/**
+ * Phrase Store Module
+ *
+ * This module provides persistence for saved phrases using SQLite as the primary storage
+ * with localStorage as a fallback. It handles:
+ * - Phrase CRUD operations (Create, Read, Update, Delete)
+ * - Content hash verification for phrase-text matching
+ * - Position tracking for phrase decoration
+ * - Database schema management and migrations
+ * - Cross-component event communication
+ *
+ * Architecture:
+ * - Uses Tauri SQL plugin for SQLite operations
+ * - Implements localStorage fallback for development/testing
+ * - Provides type-safe interfaces for phrase data
+ * - Handles database initialization and schema updates
+ */
+
 import Database from "@tauri-apps/plugin-sql";
 
+/**
+ * Saved Phrase Interface
+ *
+ * Represents a saved phrase with all associated metadata.
+ * This interface defines the structure of phrase data stored in the database.
+ */
 export interface SavedPhrase {
-    id: string;
-    lang: string; // L2
-    text: string;
-    translation: string;
-    context: string;
-    tags: string[];
-    addedAt: string; // ISO
-    sourceFile?: string; // Original filename
+    id: string; // Unique identifier (UUID)
+    lang: string; // L2 language code (e.g., "es", "fr")
+    text: string; // The actual phrase text
+    translation: string; // Translation or explanation
+    context: string; // Surrounding context sentence
+    tags: string[]; // User-defined tags for categorization
+    addedAt: string; // ISO timestamp of when phrase was added
+    sourceFile?: string; // Original filename where phrase was found
     contentHash?: string; // Hash of file content for verification
     // Position of the phrase in the original text (1-based line, 0-based column offset)
-    lineNo?: number;
-    colOffset?: number;
+    lineNo?: number; // Line number in source text (1-based)
+    colOffset?: number; // Column offset within the line (0-based)
 }
 
+/**
+ * Storage Configuration
+ *
+ * Constants for localStorage fallback and event communication.
+ */
 const STORAGE_KEY = "readnlearn-phrases";
 
+/**
+ * Event Constants
+ *
+ * Custom events for cross-component communication.
+ * Used to notify components when phrase data changes.
+ */
 export const PHRASES_UPDATED_EVENT = "readnlearn:phrases-updated";
 
-// Generate a simple hash for content verification
+/**
+ * Content Hash Generation
+ *
+ * Generates a simple hash for content verification.
+ * Used to match phrases to their source content and detect changes.
+ *
+ * Algorithm: Simple hash function that processes each character
+ * and combines them using bit shifting and addition.
+ *
+ * @param content - The text content to hash
+ * @returns Base-36 encoded hash string
+ */
 export function generateContentHash(content: string): string {
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
@@ -32,6 +76,21 @@ export function generateContentHash(content: string): string {
     return Math.abs(hash).toString(36);
 }
 
+/**
+ * Database Initialization
+ *
+ * Ensures the SQLite database is properly initialized with the correct schema.
+ * Handles database path resolution, schema creation, and migrations.
+ *
+ * Features:
+ * - Resolves database path using Tauri's app data directory
+ * - Creates phrases table with proper schema
+ * - Handles schema migrations for existing installations
+ * - Provides development logging for debugging
+ *
+ * @returns Promise<Database> - Initialized database instance
+ * @throws Error if database initialization fails
+ */
 export async function ensureDb() {
     try {
         // Resolve a predictable absolute DB path when running under Tauri; fallback to default URL otherwise
@@ -51,6 +110,8 @@ export async function ensureDb() {
         }
 
         const db = await Database.load(dbUrl);
+
+        // Create the phrases table with the complete schema
         await db.execute(
             `CREATE TABLE IF NOT EXISTS phrases (
           id TEXT PRIMARY KEY,
@@ -66,6 +127,7 @@ export async function ensureDb() {
           col_offset INTEGER
         )`,
         );
+
         // Try to add missing columns on existing installations (SQLite has no IF NOT EXISTS for columns)
         try {
             await db.execute(`ALTER TABLE phrases ADD COLUMN line_no INTEGER`);
