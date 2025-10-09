@@ -81,12 +81,8 @@ export const TextReader: React.FC<TextReaderProps> = ({
                 target.scrollIntoView({ behavior: "smooth", block: "center" });
             }
         };
-        window.addEventListener("readnlearn:jump-to-phrase-in-text", handler as EventListener);
-        return () =>
-            window.removeEventListener(
-                "readnlearn:jump-to-phrase-in-text",
-                handler as EventListener,
-            );
+        window.addEventListener("readnlearn:jump-to-phrase-in-text", handler);
+        return () => window.removeEventListener("readnlearn:jump-to-phrase-in-text", handler);
     }, [savedPhrases]);
 
     // savedPhrases are now managed by App.tsx and passed as props

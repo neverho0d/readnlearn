@@ -18,7 +18,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
             const markerText = sup.textContent || ""; // first 4 chars of id
             const event = new CustomEvent("readnlearn:jump-to-phrase", {
                 detail: { marker: markerText },
-            } as CustomEventInit);
+            });
             window.dispatchEvent(event);
         }
     };

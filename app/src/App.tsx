@@ -187,28 +187,7 @@ function App() {
 
         setVisiblePhrases(visible);
 
-        // Debug logging
-        if (
-            typeof process !== "undefined" &&
-            process.env &&
-            process.env.NODE_ENV === "development"
-        ) {
-            console.log("Scroll detection:", {
-                followText,
-                visiblePhrasesCount: visible.size,
-                visiblePhrases: Array.from(visible),
-                phraseAnchorsCount: phraseAnchors.length,
-                viewportTop,
-                viewportBottom,
-                phraseAnchors: Array.from(phraseAnchors).map((anchor) => ({
-                    id: anchor.getAttribute("data-phrase-id"),
-                    rect: anchor.getBoundingClientRect(),
-                    isVisible:
-                        anchor.getBoundingClientRect().top < viewportBottom &&
-                        anchor.getBoundingClientRect().bottom > viewportTop,
-                })),
-            });
-        }
+        // Debug logging removed for production
     }, [followText, externalText]);
 
     // Set up scroll event listeners for phrase visibility detection
@@ -230,7 +209,7 @@ function App() {
         );
 
         // Throttle scroll events for better performance
-        let timeoutId: NodeJS.Timeout;
+        let timeoutId: ReturnType<typeof setTimeout>;
         const handleScroll = () => {
             console.log("📜 Scroll event triggered");
             clearTimeout(timeoutId);
@@ -431,7 +410,8 @@ function MainContent(props: {
     sourceFile?: string | null;
     followText: boolean;
     visiblePhrases: Set<string>;
-    onFollowTextToggle: (checked: boolean) => void;
+    // eslint-disable-next-line no-unused-vars
+    onFollowTextToggle: (enabled: boolean) => void;
     savedPhrases: Array<{ id: string; text: string; position: number }>;
     setSavedPhrases: React.Dispatch<
         React.SetStateAction<Array<{ id: string; text: string; position: number }>>
@@ -633,7 +613,7 @@ function MainContent(props: {
             if (phrasesCollapsed) {
                 setPhrasesCollapsed(false);
                 // Re-dispatch after layout so the card can scroll/blink
-                const original = ev as CustomEvent<any>;
+                const original = ev as CustomEvent<{ marker: string }>;
                 setTimeout(() => {
                     try {
                         const again = new CustomEvent("readnlearn:jump-to-phrase", {

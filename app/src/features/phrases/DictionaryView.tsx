@@ -32,7 +32,8 @@ interface DictionaryViewProps {
     // Scroll-following props
     followText?: boolean;
     visiblePhrases?: Set<string>;
-    onFollowTextToggle?: (checked: boolean) => void;
+    // eslint-disable-next-line no-unused-vars
+    onFollowTextToggle?: (enabled: boolean) => void;
 }
 
 export const DictionaryView: React.FC<DictionaryViewProps> = ({
@@ -174,28 +175,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
 
         // If text is loaded and we want to filter by current text
         if (!showAllPhrases) {
-            // Debug logging
-            if (
-                typeof process !== "undefined" &&
-                process.env &&
-                process.env.NODE_ENV === "development"
-            ) {
-                console.log("DictionaryView filtering:", {
-                    followText,
-                    visiblePhrasesSize: visiblePhrases.size,
-                    visiblePhrases: Array.from(visiblePhrases),
-                    totalRows: rows.length,
-                    filterTextLength: filterText.length,
-                    rowIds: rows.map((r) => r.id),
-                });
-            }
-
-            console.log("🔍 Filtering phrases:", {
-                followText,
-                visiblePhrasesSize: visiblePhrases.size,
-                visiblePhrases: Array.from(visiblePhrases),
-                totalRows: rows.length,
-            });
+            // Debug logging removed for production
 
             const filtered = rows.filter((row) => {
                 // If followText is enabled, only show phrases that are currently visible

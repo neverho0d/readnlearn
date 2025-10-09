@@ -103,12 +103,14 @@ export function sortPhrasesByPosition(phrases: PhraseWithPosition[]): PhraseWith
 /**
  * Sort phrases by database line/column (for dictionary mode)
  */
-export function sortPhrasesByLineColumn(phrases: any[]): any[] {
+export function sortPhrasesByLineColumn(
+    phrases: Array<{ line_no: number; col_offset: number; position?: number }>,
+): Array<{ line_no: number; col_offset: number; position?: number }> {
     return [...phrases].sort((a, b) => {
-        const aLine = (a as any).line_no;
-        const aCol = (a as any).col_offset;
-        const bLine = (b as any).line_no;
-        const bCol = (b as any).col_offset;
+        const aLine = a.line_no;
+        const aCol = a.col_offset;
+        const bLine = b.line_no;
+        const bCol = b.col_offset;
 
         // Use line_no * 100000 + col_offset for sorting
         if (
