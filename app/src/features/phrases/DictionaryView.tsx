@@ -1,11 +1,6 @@
 import React from "react";
 import { useSettings } from "../../lib/settings/SettingsContext";
-import {
-    ensureDb,
-    loadPhrases,
-    PHRASES_UPDATED_EVENT,
-    removePhrase,
-} from "../../lib/db/phraseStore";
+import { PHRASES_UPDATED_EVENT, removePhrase } from "../../lib/db/phraseStore";
 
 interface PhraseRow {
     id: string;
@@ -73,18 +68,11 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                 return;
             }
 
-            // Try SQL first
-            const db = await ensureDb();
-            const list = (await db.select(
-                "SELECT id, lang, text, translation, context, tags_json, added_at, source_file, content_hash, line_no as line_no, col_offset as col_offset FROM phrases ORDER BY added_at DESC",
-            )) as PhraseRow[] & Array<{ line_no?: number; col_offset?: number }>;
-            if (list.length === 0) {
-                // If DB exists but has no rows yet, fall back to localStorage for tests/dev
-                const fallbackPhrases = loadPhrases();
-                setRows(fallbackPhrases as unknown as PhraseRow[]);
-            } else {
-                setRows(list);
-            }
+            // Use the new database system
+            const { loadAllPhrases } = await import("../../lib/db/phraseStore");
+
+            const phrases = await loadAllPhrases();
+            setRows(phrases as unknown as PhraseRow[]);
 
             // Debug logging
             // if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development") {
@@ -93,18 +81,9 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
             //         phrases: list.map((p) => ({ id: p.id, text: p.text })),
             //     });
             // }
-        } catch {
-            // Fallback to localStorage loader
-            const fallbackPhrases = loadPhrases();
-            setRows(fallbackPhrases);
-
-            // Debug logging
-            // if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development") {
-            //     console.log("Phrases refreshed from localStorage:", {
-            //         count: fallbackPhrases.length,
-            //         phrases: fallbackPhrases.map((p) => ({ id: p.id, text: p.text })),
-            //     });
-            // }
+        } catch (error) {
+            console.error("Failed to load phrases:", error);
+            setRows([]);
         } finally {
             setLoading(false);
         }
@@ -429,7 +408,18 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                 }}
                             >
                                 <span style={{ width: 24, color: "var(--muted)", fontSize: 12 }}>
-                                    ✎
+                                    <svg
+                                        aria-hidden="true"
+                                        focusable="false"
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 512 512"
+                                    >
+                                        <path
+                                            fill="currentColor"
+                                            d="M410.3 231l11.3-11.3c18.7-18.7 18.7-49.1 0-67.9L360.1 90.3c-18.7-18.7-49.1-18.7-67.9 0L281 101.7 410.3 231zM256 126.6L58.6 324c-6.1 6.1-10.4 13.7-12.6 22L32 448c-1.1 4.5 .3 9.2 3.6 12.4s7.9 4.7 12.4 3.6l101.9-14c8.3-2.3 15.9-6.6 22-12.6L369.4 240 256 126.6z"
+                                        />
+                                    </svg>
                                 </span>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div
@@ -498,7 +488,18 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                         }}
                                     >
                                         <span style={{ color: "var(--muted)", fontSize: 12 }}>
-                                            📄
+                                            <svg
+                                                aria-hidden="true"
+                                                focusable="false"
+                                                width="12"
+                                                height="12"
+                                                viewBox="0 0 384 512"
+                                            >
+                                                <path
+                                                    fill="currentColor"
+                                                    d="M224 0H24C10.7 0 0 10.7 0 24V488c0 13.3 10.7 24 24 24H360c13.3 0 24-10.7 24-24V160L224 0zM224 160V0L360 136H248c-13.3 0-24-10.7-24-24z"
+                                                />
+                                            </svg>
                                         </span>
                                         <span
                                             style={{
@@ -541,6 +542,19 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                         }}
                                         title="Remove phrase"
                                     >
+                                        <svg
+                                            aria-hidden="true"
+                                            focusable="false"
+                                            width="12"
+                                            height="12"
+                                            viewBox="0 0 448 512"
+                                            style={{ marginRight: 6 }}
+                                        >
+                                            <path
+                                                fill="currentColor"
+                                                d="M135.2 17.7C140.8 7 151.6 0 163.5 0h121c11.9 0 22.7 7 28.3 17.7L328 32H432c8.8 0 16 7.2 16 16s-7.2 16-16 16H16C7.2 64 0 56.8 0 48S7.2 32 16 32H120l15.2-14.3zM32 96H416L394.4 467.1c-1.4 23.1-20.5 40.9-43.6 40.9H97.2c-23.1 0-42.2-17.8-43.6-40.9L32 96z"
+                                            />
+                                        </svg>
                                         Remove
                                     </button>
                                 </div>

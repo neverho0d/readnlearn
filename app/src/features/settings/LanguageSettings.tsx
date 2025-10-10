@@ -3,7 +3,9 @@ import { useSettings, LANGUAGES } from "../../lib/settings/SettingsContext";
 import { useI18n } from "../../lib/i18n/I18nContext";
 import "./LanguageSettings.css";
 import { useTheme } from "../../lib/settings/ThemeContext";
-import { useAppMode, AppMode } from "../../lib/state/appMode";
+import { useAppMode } from "../../lib/state/appMode";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBookOpen, faBook, faGraduationCap } from "@fortawesome/free-solid-svg-icons";
 
 interface LanguageSettingsProps {
     isLoading?: boolean;
@@ -110,23 +112,72 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
 
             {/* Left section: mode switch */}
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <select
-                        value={mode}
-                        onChange={(e) => setMode(e.target.value as AppMode)}
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {/* Reading Mode Button */}
+                    <button
+                        onClick={() => setMode("reading")}
                         style={{
-                            backgroundColor: "#2d3748",
-                            color: "white",
+                            backgroundColor: mode === "reading" ? "#4a5568" : "transparent",
+                            color: mode === "reading" ? "#ffffff" : "#a0aec0",
                             border: "1px solid #4a5568",
                             borderRadius: 4,
-                            padding: "4px 8px",
+                            padding: "6px 8px",
                             fontSize: 12,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            transition: "all 0.2s ease",
                         }}
+                        title="Reading Mode"
                     >
-                        <option value="reading">Reading</option>
-                        <option value="dictionary">Dictionary</option>
-                        <option value="learning">Learning</option>
-                    </select>
+                        <FontAwesomeIcon icon={faBookOpen} />
+                        <span>Reading</span>
+                    </button>
+
+                    {/* Dictionary Mode Button */}
+                    <button
+                        onClick={() => setMode("dictionary")}
+                        style={{
+                            backgroundColor: mode === "dictionary" ? "#4a5568" : "transparent",
+                            color: mode === "dictionary" ? "#ffffff" : "#a0aec0",
+                            border: "1px solid #4a5568",
+                            borderRadius: 4,
+                            padding: "6px 8px",
+                            fontSize: 12,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            transition: "all 0.2s ease",
+                        }}
+                        title="Dictionary Mode"
+                    >
+                        <FontAwesomeIcon icon={faBook} />
+                        <span>Dictionary</span>
+                    </button>
+
+                    {/* Learning Mode Button */}
+                    <button
+                        onClick={() => setMode("learning")}
+                        style={{
+                            backgroundColor: mode === "learning" ? "#4a5568" : "transparent",
+                            color: mode === "learning" ? "#ffffff" : "#a0aec0",
+                            border: "1px solid #4a5568",
+                            borderRadius: 4,
+                            padding: "6px 8px",
+                            fontSize: 12,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            transition: "all 0.2s ease",
+                        }}
+                        title="Learning Mode"
+                    >
+                        <FontAwesomeIcon icon={faGraduationCap} />
+                        <span>Learning</span>
+                    </button>
                 </div>
             </div>
 

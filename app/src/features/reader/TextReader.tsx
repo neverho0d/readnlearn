@@ -100,18 +100,28 @@ export const TextReader: React.FC<TextReaderProps> = ({
         translation: string;
     }) => {
         const context = getContextAroundPhrase(payload.phrase, text);
-        // Compute stable (line, column) for the first exact/ci match
+        // Compute stable (line, column) for the first occurrence with robust matching
+        // 1) exact; 2) case-insensitive; 3) whitespace-flexible regex matching
         const idxExact = text.indexOf(payload.phrase);
-        const idx =
+        let idx =
             idxExact >= 0 ? idxExact : text.toLowerCase().indexOf(payload.phrase.toLowerCase());
-        let lineNo: number | undefined;
-        let colOffset: number | undefined;
-        if (idx >= 0) {
-            const before = text.slice(0, idx);
-            const lines = before.split(/\n/);
-            lineNo = lines.length; // 1-based line number
-            colOffset = lines[lines.length - 1].length; // 0-based column offset in line
+        if (idx < 0) {
+            try {
+                const escaped = payload.phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                const pattern = escaped.replace(/\s+/g, "\\s+");
+                const re = new RegExp(pattern, "i");
+                const m = re.exec(text);
+                if (m && typeof m.index === "number") idx = m.index;
+            } catch {
+                // ignore regex errors; idx stays -1
+            }
         }
+        if (idx < 0) throw new Error("Cannot locate phrase position in source text");
+
+        const before = text.slice(0, idx);
+        const lines = before.split(/\n/);
+        const lineNo = lines.length; // 1-based line number
+        const colOffset = lines[lines.length - 1].length; // 0-based column offset in line
         // Persist locally for now
         // Cleanup tags: strip leading '#'
         const cleanedTags = (payload.tags || []).map((t) => t.replace(/^#+/u, ""));
@@ -169,16 +179,41 @@ export const TextReader: React.FC<TextReaderProps> = ({
 
         for (const phrase of sortedPhrases) {
             const start = Math.max(0, phrase.position);
-            const end = Math.min(result.length, start + phrase.text.length);
+            // Calculate end position using original text length to ensure we get the full phrase
+            let end = Math.min(text.length, start + phrase.text.length);
 
             if (start >= 0 && end > start) {
                 // Use the original substring at this position to preserve casing/punctuation
-                const original = result.substring(start, end);
-                // Create decorated phrase with superscript marker and data attribute for scroll following
-                const decoratedPhrase = `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${original}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+                const original = text.substring(start, end);
+                console.log("Original phrase:", original, phrase.text);
 
-                // Replace the phrase in the text
-                result = result.substring(0, start) + decoratedPhrase + result.substring(end);
+                // Fix for newline characters: count newlines in the original substring
+                // and adjust the end position to include them
+                const newlineCount = (original.match(/\n/g) || []).length;
+                if (newlineCount > 0) {
+                    // Extend the end position to include the newlines
+                    end = Math.min(text.length, end + newlineCount);
+                    // Re-extract the original with the corrected end position
+                    const correctedOriginal = text.substring(start, end);
+                    console.log(
+                        "Corrected original phrase:",
+                        correctedOriginal,
+                        "newlines found:",
+                        newlineCount,
+                    );
+
+                    // Create decorated phrase with superscript marker and data attribute for scroll following
+                    const decoratedPhrase = `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${correctedOriginal}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+
+                    // Replace the phrase in the text, but use the original text for the replacement
+                    result = result.substring(0, start) + decoratedPhrase + result.substring(end);
+                } else {
+                    // No newlines, use original logic
+                    const decoratedPhrase = `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${original}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+
+                    // Replace the phrase in the text, but use the original text for the replacement
+                    result = result.substring(0, start) + decoratedPhrase + result.substring(end);
+                }
             }
         }
 

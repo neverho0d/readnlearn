@@ -22,9 +22,11 @@ import { ThemeProvider } from "./lib/settings/ThemeContext";
 import { LanguageSettings } from "./features/settings/LanguageSettings";
 import { TextReader } from "./features/reader/TextReader";
 import "./App.css";
-import { useAppMode } from "./lib/state/appMode";
 import { DictionaryView } from "./features/phrases/DictionaryView";
+import { EnhancedDictionaryView } from "./features/phrases/EnhancedDictionaryView";
 import { PHRASES_UPDATED_EVENT } from "./lib/db/phraseStore";
+import { useAppMode } from "./lib/state/appMode";
+import { generateContentHash } from "./lib/db/phraseStore";
 
 /**
  * Main App Component
@@ -36,6 +38,7 @@ import { PHRASES_UPDATED_EVENT } from "./lib/db/phraseStore";
  * - restored: Prevents multiple restoration attempts on startup
  */
 function App() {
+    const mode = useAppMode((s) => s.mode);
     // Application state for file loading and content management
     const [isLoading, setIsLoading] = useState(false);
     const [externalText, setExternalText] = useState<string | null>(null);
@@ -70,15 +73,24 @@ function App() {
 
         try {
             const { loadPhrasesForContent } = await import("./lib/phrases/phraseManager");
+
             const phrases = await loadPhrasesForContent({
                 content: externalText,
                 sourceFile: sourceFile || undefined,
+                contentHash: generateContentHash(externalText),
             });
-            console.log(
-                "Loaded phrases:",
-                phrases.map((p) => ({ id: p.id, text: p.text })),
-            );
-            setSavedPhrases(phrases);
+
+            console.log("Loaded phrases for content:", phrases);
+
+            // Transform to expected format for TextReader
+            const transformedPhrases = phrases.map((p) => ({
+                id: p.id,
+                text: p.text,
+                position: p.position,
+            }));
+
+            console.log("Transformed phrases:", transformedPhrases);
+            setSavedPhrases(transformedPhrases);
         } catch (error) {
             console.error("Error loading saved phrases:", error);
             setSavedPhrases([]);
@@ -193,6 +205,7 @@ function App() {
     // Set up scroll event listeners for phrase visibility detection
     useEffect(() => {
         if (!followText || !externalText) return;
+        if (mode !== "reading") return;
 
         const mainPane = document.querySelector(".main-pane");
         if (!mainPane) return;
@@ -230,7 +243,7 @@ function App() {
             window.removeEventListener("resize", handleScroll);
             clearTimeout(timeoutId);
         };
-    }, [followText, detectVisiblePhrases, savedPhrases]);
+    }, [followText, detectVisiblePhrases, savedPhrases, mode]);
 
     // Update visible phrases when followText changes
     useEffect(() => {
@@ -248,6 +261,21 @@ function App() {
             setTimeout(detectVisiblePhrases, 200);
         }
     }, [savedPhrases, followText, detectVisiblePhrases]);
+
+    // Re-establish detection after mode switches into reading
+    useEffect(() => {
+        if (mode !== "reading") {
+            // Clear when leaving reading mode
+            setVisiblePhrases(new Set());
+            return;
+        }
+        if (followText && externalText) {
+            const timeoutId = setTimeout(() => {
+                detectVisiblePhrases();
+            }, 200);
+            return () => clearTimeout(timeoutId);
+        }
+    }, [mode, followText, externalText, detectVisiblePhrases]);
 
     /**
      * Handles the follow text toggle
@@ -417,7 +445,7 @@ function MainContent(props: {
         React.SetStateAction<Array<{ id: string; text: string; position: number }>>
     >;
 }) {
-    const { mode } = useAppMode();
+    const mode = useAppMode((s) => s.mode);
     const {
         isLoading,
         externalText,
@@ -444,24 +472,6 @@ function MainContent(props: {
 
     // State for text content and phrase management
     const [currentText, setCurrentText] = useState("");
-    const [showAllPhrases, setShowAllPhrases] = useState(false);
-
-    // All phrases across all files (dictionary mode)
-    const [allPhrases, setAllPhrases] = useState<
-        Array<{
-            id: string;
-            lang: string;
-            text: string;
-            translation?: string;
-            context?: string;
-            tags?: string[];
-            addedAt: string;
-            sourceFile?: string;
-            contentHash?: string;
-            lineNo?: number;
-            colOffset?: number;
-        }>
-    >([]);
 
     /**
      * Phrase Loading Functions
@@ -504,11 +514,11 @@ function MainContent(props: {
      */
     const loadAllPhrases = React.useCallback(async () => {
         try {
+            // Load all phrases for dictionary mode
             const { loadAllPhrases: loadAllPhrasesFromStore } = await import(
                 "./lib/db/phraseStore"
             );
-            const phrases = await loadAllPhrasesFromStore();
-            setAllPhrases(phrases);
+            await loadAllPhrasesFromStore();
         } catch (error) {
             console.error("Error loading all phrases:", error);
         }
@@ -516,18 +526,7 @@ function MainContent(props: {
 
     // One-time migration and phrase updates
     React.useEffect(() => {
-        (async () => {
-            try {
-                const { migrateLocalStorageToSqlite } = await import("./lib/db/phraseStore");
-                const res = await migrateLocalStorageToSqlite();
-                if (res.moved > 0) {
-                    void loadSavedPhrases();
-                    void loadAllPhrases();
-                }
-            } catch (e) {
-                console.error("Migration error:", e);
-            }
-        })();
+        // Migration removed - using pure SQLite database
         const handlePhraseUpdate = () => {
             void loadSavedPhrases();
             void loadAllPhrases();
@@ -730,8 +729,34 @@ function MainContent(props: {
                                 cursor: "pointer",
                                 padding: 0,
                             }}
+                            className="icon-button"
                         >
-                            {phrasesCollapsed ? "❮" : "❯"}
+                            <svg
+                                aria-hidden="true"
+                                focusable="false"
+                                width="12"
+                                height="12"
+                                viewBox="0 0 320 512"
+                                style={{ display: phrasesCollapsed ? "none" : "block" }}
+                            >
+                                <path
+                                    fill="currentColor"
+                                    d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"
+                                />
+                            </svg>
+                            <svg
+                                aria-hidden="true"
+                                focusable="false"
+                                width="12"
+                                height="12"
+                                viewBox="0 0 320 512"
+                                style={{ display: phrasesCollapsed ? "block" : "none" }}
+                            >
+                                <path
+                                    fill="currentColor"
+                                    d="M41.4 278.6c-12.5-12.5-12.5-32.8 0-45.3l160-160c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3L109.3 256 246.6 393.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0l-160-160z"
+                                />
+                            </svg>
                         </button>
                     </div>
                     <div
@@ -769,13 +794,7 @@ function MainContent(props: {
                 </div>
             )}
             {mode === "dictionary" && (
-                <DictionaryView
-                    filterText={currentText}
-                    showAllPhrases={showAllPhrases}
-                    onToggleFilter={setShowAllPhrases}
-                    savedPhrases={savedPhrases}
-                    allPhrases={allPhrases}
-                />
+                <EnhancedDictionaryView sourceFile={sourceFile} hasCurrentFile={!!currentText} />
             )}
             {mode === "learning" && <div />}
         </div>

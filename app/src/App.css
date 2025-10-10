@@ -8,6 +8,7 @@
     --primary-contrast: #ffffff;
     --topbar-bg: #1a202c;
     --topbar-text: #ffffff;
+    --bg-hover: #d7dbdf;
 }
 
 :root[data-theme="dark"] {
@@ -21,6 +22,7 @@
     --primary-contrast: #0f1115;
     --topbar-bg: #0e1013;
     --topbar-text: #e5e7eb;
+    --bg-hover: #1f2937;
 }
 
 body {
@@ -101,6 +103,14 @@ button {
     background-color: #ffffff;
     transition: border-color 0.25s;
     box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Icon-only buttons should never have their own shadows/borders */
+.icon-button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
 }
 
 button {

@@ -1,8 +1,8 @@
 /**
  * Phrase Store Module
  *
- * This module provides persistence for saved phrases using SQLite as the primary storage
- * with localStorage as a fallback. It handles:
+ * This module provides persistence for saved phrases using SQLite as the primary storage.
+ * It handles:
  * - Phrase CRUD operations (Create, Read, Update, Delete)
  * - Content hash verification for phrase-text matching
  * - Position tracking for phrase decoration
@@ -10,13 +10,14 @@
  * - Cross-component event communication
  *
  * Architecture:
- * - Uses Tauri SQL plugin for SQLite operations
- * - Implements localStorage fallback for development/testing
+ * - Uses unified database interface that works in both browser (sql.js) and Tauri environments
  * - Provides type-safe interfaces for phrase data
  * - Handles database initialization and schema updates
  */
 
-import Database from "@tauri-apps/plugin-sql";
+import { getDatabaseAdapter } from "./database";
+import { DatabaseAdapter } from "./adapters/DatabaseAdapter";
+import { generateStemmedPhrase, generateStemmedSearchTerms } from "../utils/stemming";
 
 /**
  * Saved Phrase Interface
@@ -38,13 +39,6 @@ export interface SavedPhrase {
     lineNo?: number; // Line number in source text (1-based)
     colOffset?: number; // Column offset within the line (0-based)
 }
-
-/**
- * Storage Configuration
- *
- * Constants for localStorage fallback and event communication.
- */
-const STORAGE_KEY = "readnlearn-phrases";
 
 /**
  * Event Constants
@@ -80,114 +74,33 @@ export function generateContentHash(content: string): string {
  * Database Initialization
  *
  * Ensures the SQLite database is properly initialized with the correct schema.
- * Handles database path resolution, schema creation, and migrations.
+ * Works in both browser (sql.js) and Tauri environments.
  *
- * Features:
- * - Resolves database path using Tauri's app data directory
- * - Creates phrases table with proper schema
- * - Handles schema migrations for existing installations
- * - Provides development logging for debugging
- *
- * @returns Promise<Database> - Initialized database instance
+ * @returns Promise<DatabaseAdapter> - Initialized database adapter
  * @throws Error if database initialization fails
  */
-export async function ensureDb() {
+export async function ensureDb(): Promise<DatabaseAdapter> {
     try {
-        // Resolve a predictable absolute DB path when running under Tauri; fallback to default URL otherwise
-        let dbUrl = "sqlite:readnlearn.db";
-        try {
-            const tauriWin = window as unknown as {
-                __TAURI__?: { path?: { appDataDir?: () => Promise<string> } };
-            };
-            const appDataDir = await tauriWin.__TAURI__?.path?.appDataDir?.();
-            if (appDataDir) {
-                // Ensure trailing slash
-                const base = appDataDir.endsWith("/") ? appDataDir : `${appDataDir}/`;
-                dbUrl = `sqlite:${base}readnlearn.db`;
-            }
-        } catch {
-            // ignore path resolution errors; default URL will be used
-        }
-
-        const db = await Database.load(dbUrl);
-
-        // Create the phrases table with the complete schema
-        await db.execute(
-            `CREATE TABLE IF NOT EXISTS phrases (
-          id TEXT PRIMARY KEY,
-          lang TEXT NOT NULL,
-          text TEXT NOT NULL,
-          translation TEXT,
-          context TEXT,
-          tags_json TEXT,
-          added_at TEXT NOT NULL,
-          source_file TEXT,
-          content_hash TEXT,
-          line_no INTEGER,
-          col_offset INTEGER
-        )`,
-        );
-
-        // Try to add missing columns on existing installations (SQLite has no IF NOT EXISTS for columns)
-        try {
-            await db.execute(`ALTER TABLE phrases ADD COLUMN line_no INTEGER`);
-        } catch {
-            // Column may already exist
-        }
-        try {
-            await db.execute(`ALTER TABLE phrases ADD COLUMN col_offset INTEGER`);
-        } catch {
-            // Column may already exist
-        }
-
-        // In development, log the actual DB file path to help diagnostics
-        try {
-            // Best-effort logging without relying on Node globals
-            const rows = (await db.select("SELECT name, file FROM pragma_database_list")) as Array<{
-                name: string;
-                file: string;
-            }>;
-            console.log("SQLite database list:", rows);
-        } catch {
-            // ignore logging errors
-        }
+        const db = await getDatabaseAdapter();
+        console.log("SQLite database initialized successfully");
         return db;
     } catch (error) {
         console.error("Failed to initialize SQLite database:", error);
-        throw new Error("Database initialization failed. Please check Tauri permissions.");
+        throw new Error("Database initialization failed");
     }
 }
 
-export function loadPhrases(): SavedPhrase[] {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? (JSON.parse(raw) as SavedPhrase[]) : [];
-    } catch {
-        return [];
-    }
-}
-
-// Unified loader: prefer DB, fallback to localStorage
+/**
+ * Load all phrases from the database
+ */
 export async function loadAllPhrases(): Promise<SavedPhrase[]> {
     try {
         const db = await ensureDb();
-        const rows = (await db.select(
+        const rows = await db.select(
             "SELECT id, lang, text, translation, context, tags_json, added_at, source_file, content_hash, line_no, col_offset FROM phrases ORDER BY added_at DESC",
-        )) as Array<{
-            id: string;
-            lang: string;
-            text: string;
-            translation: string | null;
-            context: string | null;
-            tags_json: string | null;
-            added_at: string;
-            source_file: string | null;
-            content_hash: string | null;
-            line_no: number | null;
-            col_offset: number | null;
-        }>;
+        );
 
-        return rows.map((r) => ({
+        return rows.map((r: any) => ({
             id: r.id,
             lang: r.lang,
             text: r.text,
@@ -201,36 +114,52 @@ export async function loadAllPhrases(): Promise<SavedPhrase[]> {
             colOffset: r.col_offset ?? undefined,
         }));
     } catch (error) {
-        console.error("Failed to load phrases from database, falling back to localStorage:", error);
-        return loadPhrases();
+        console.error("Failed to load phrases from database:", error);
+        throw error;
     }
 }
 
+/**
+ * Save a new phrase to the database
+ */
 export async function savePhrase(p: Omit<SavedPhrase, "id" | "addedAt">): Promise<SavedPhrase> {
     try {
         const db = await ensureDb();
         const saved: SavedPhrase = {
-            ...p,
             id: crypto.randomUUID(),
             addedAt: new Date().toISOString(),
+            ...p,
         };
+
+        // Generate stemmed versions for FTS
+        const stemmed = generateStemmedPhrase({
+            text: saved.text,
+            translation: saved.translation,
+            context: saved.context,
+            lang: saved.lang,
+        });
+
         await db.execute(
-            `INSERT INTO phrases (id, lang, text, translation, context, tags_json, added_at, source_file, content_hash, line_no, col_offset)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            `INSERT INTO phrases (id, lang, text, translation, context, tags_json, added_at, source_file, content_hash, line_no, col_offset, text_stemmed, translation_stemmed, context_stemmed)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 saved.id,
                 saved.lang,
                 saved.text,
-                saved.translation,
-                saved.context,
-                JSON.stringify(saved.tags),
+                saved.translation || null,
+                saved.context || null,
+                JSON.stringify(saved.tags || []),
                 saved.addedAt,
                 saved.sourceFile || null,
                 saved.contentHash || null,
                 saved.lineNo ?? null,
                 saved.colOffset ?? null,
+                stemmed.textStemmed,
+                stemmed.translationStemmed,
+                stemmed.contextStemmed,
             ],
         );
+
         // Notify UI listeners
         try {
             window.dispatchEvent(new CustomEvent(PHRASES_UPDATED_EVENT));
@@ -244,10 +173,13 @@ export async function savePhrase(p: Omit<SavedPhrase, "id" | "addedAt">): Promis
     }
 }
 
+/**
+ * Remove a phrase from the database
+ */
 export async function removePhrase(phraseId: string): Promise<void> {
     try {
         const db = await ensureDb();
-        await db.execute("DELETE FROM phrases WHERE id = $1", [phraseId]);
+        await db.delete("DELETE FROM phrases WHERE id = ?", [phraseId]);
 
         // Notify UI listeners
         try {
@@ -261,45 +193,391 @@ export async function removePhrase(phraseId: string): Promise<void> {
     }
 }
 
-// One-time migration: move phrases from localStorage to SQLite
-export async function migrateLocalStorageToSqlite(): Promise<{ moved: number }> {
-    const legacy = loadPhrases();
-    if (!legacy.length) return { moved: 0 };
-    const db = await ensureDb();
-    let moved = 0;
-    for (const p of legacy) {
-        try {
-            await db.execute(
-                `INSERT OR IGNORE INTO phrases (id, lang, text, translation, context, tags_json, added_at, source_file, content_hash, line_no, col_offset)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-                [
-                    p.id || crypto.randomUUID(),
-                    p.lang,
-                    p.text,
-                    p.translation ?? null,
-                    p.context ?? null,
-                    JSON.stringify(p.tags ?? []),
-                    p.addedAt || new Date().toISOString(),
-                    p.sourceFile ?? null,
-                    p.contentHash ?? null,
-                    p.lineNo ?? null,
-                    p.colOffset ?? null,
-                ],
-            );
-            moved++;
-        } catch (e) {
-            console.error("Migration insert failed for phrase:", p.id, e);
+/**
+ * Search Options Interface
+ */
+export interface SearchOptions {
+    searchText?: string;
+    selectedTags?: string[];
+    scope?: "current" | "all";
+    sourceFile?: string;
+    page?: number;
+    itemsPerPage?: number;
+}
+
+/**
+ * Search Results Interface
+ */
+export interface SearchResults {
+    phrases: SavedPhrase[];
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+}
+
+/**
+ * Search phrases using FTS with advanced filtering
+ */
+export async function searchPhrases(options: SearchOptions = {}): Promise<SearchResults> {
+    const {
+        searchText = "",
+        selectedTags = [],
+        scope = "all",
+        sourceFile,
+        page = 1,
+        itemsPerPage = 20,
+    } = options;
+
+    try {
+        const db = await ensureDb();
+
+        // Build the WHERE clause based on search criteria
+        const whereConditions: string[] = [];
+        const queryParams: (string | number)[] = [];
+        let paramIndex = 1;
+
+        // Use FTS5 MATCH for real full-text search if a query is present (Tauri only)
+        // For browser, use LIKE queries on the search table
+        let useFts = false;
+        const isTauri = typeof window !== "undefined" && (window as any).__TAURI__;
+
+        if (searchText.trim()) {
+            if (isTauri) {
+                // Generate stemmed search terms for better matching
+                const stemmedTerms = generateStemmedSearchTerms(searchText, "en");
+                const stemmedQuery = stemmedTerms.map((t) => `"${t}"`).join(" ");
+                const originalQuery = searchText
+                    .split(/\s+/)
+                    .map((t) => `"${t}"`)
+                    .join(" ");
+
+                // Combine original and stemmed search for comprehensive results
+                const combinedQuery = `${originalQuery} OR ${stemmedQuery}`;
+                whereConditions.push(`phrases_fts MATCH ?${paramIndex}`);
+                queryParams.push(combinedQuery);
+                paramIndex++;
+                useFts = true;
+            } else {
+                // Browser mode: use stemmed search with LIKE queries
+                const searchTerms = searchText.split(/\s+/);
+                const stemmedTerms = generateStemmedSearchTerms(searchText, "en");
+
+                // Create conditions for both original and stemmed terms
+                const likeConditions = searchTerms.map(
+                    () =>
+                        `(ps.text LIKE ?${paramIndex++} OR ps.translation LIKE ?${paramIndex++} OR ps.context LIKE ?${paramIndex++} OR ps.text_stemmed LIKE ?${paramIndex++})`,
+                );
+
+                const stemmedConditions = stemmedTerms.map(
+                    () =>
+                        `(ps.text_stemmed LIKE ?${paramIndex++} OR ps.translation_stemmed LIKE ?${paramIndex++} OR ps.context_stemmed LIKE ?${paramIndex++})`,
+                );
+
+                whereConditions.push(
+                    `(${likeConditions.join(" AND ")} OR ${stemmedConditions.join(" AND ")})`,
+                );
+
+                // Add parameters for original terms
+                searchTerms.forEach((term) => {
+                    const pattern = `%${term}%`;
+                    queryParams.push(pattern, pattern, pattern, pattern);
+                });
+
+                // Add parameters for stemmed terms
+                stemmedTerms.forEach((term) => {
+                    const pattern = `%${term}%`;
+                    queryParams.push(pattern, pattern, pattern);
+                });
+            }
         }
+
+        // Filter by source file if scope is "current"
+        if (scope === "current" && sourceFile) {
+            whereConditions.push(`p.source_file = ?${paramIndex}`);
+            queryParams.push(sourceFile);
+            paramIndex++;
+        }
+
+        // Filter by tags if any are selected
+        if (selectedTags.length > 0) {
+            const tagConditions = selectedTags.map(() => `p.tags_json LIKE ?${paramIndex++}`);
+            whereConditions.push(`(${tagConditions.join(" OR ")})`);
+            selectedTags.forEach((tag) => queryParams.push(`%"${tag}"%`));
+        }
+
+        // Build the base query
+        let baseQuery = "FROM phrases p";
+        if (useFts) {
+            baseQuery = "FROM phrases_fts";
+        } else if (!isTauri && searchText.trim()) {
+            // Browser mode with search: join with search table
+            baseQuery = "FROM phrases p JOIN phrases_search ps ON p.id = ps.id";
+        }
+
+        const whereClause =
+            whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+
+        // Get total count
+        const countQuery = `SELECT COUNT(*) as count ${baseQuery} ${whereClause}`;
+        const countResult = await db.select(countQuery, queryParams);
+        const totalCount = countResult[0]?.count || 0;
+
+        // Calculate pagination
+        const totalPages = Math.ceil(totalCount / itemsPerPage);
+        const offset = (page - 1) * itemsPerPage;
+
+        // Get paginated results
+        const selectQuery = `
+            SELECT p.id, p.lang, p.text, p.translation, p.context, p.tags_json, p.added_at, p.source_file, p.content_hash, p.line_no, p.col_offset
+            ${baseQuery}
+            ${whereClause}
+            ORDER BY ${useFts ? "rank" : "p.added_at DESC"}
+            LIMIT ?${paramIndex} OFFSET ?${paramIndex + 1}
+        `;
+        queryParams.push(itemsPerPage, offset);
+
+        const rows = await db.select(selectQuery, queryParams);
+
+        const phrases = rows.map((r: any) => ({
+            id: r.id,
+            lang: r.lang,
+            text: r.text,
+            translation: r.translation ?? "",
+            context: r.context ?? "",
+            tags: r.tags_json ? JSON.parse(r.tags_json) : [],
+            addedAt: r.added_at,
+            sourceFile: r.source_file ?? undefined,
+            contentHash: r.content_hash ?? undefined,
+            lineNo: r.line_no ?? undefined,
+            colOffset: r.col_offset ?? undefined,
+        }));
+
+        return {
+            phrases,
+            totalCount,
+            currentPage: page,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1,
+        };
+    } catch (error) {
+        console.error("Failed to search phrases:", error);
+        // Return empty results on error
+        return {
+            phrases: [],
+            totalCount: 0,
+            currentPage: 1,
+            totalPages: 0,
+            hasNextPage: false,
+            hasPreviousPage: false,
+        };
     }
+}
+
+/**
+ * Get all available tags from the database
+ */
+export async function getAllTags(): Promise<string[]> {
     try {
-        localStorage.removeItem(STORAGE_KEY);
-    } catch {
-        // ignore
+        const db = await ensureDb();
+        const rows = await db.select(
+            "SELECT tags_json FROM phrases WHERE tags_json IS NOT NULL AND tags_json != ''",
+        );
+
+        const allTags = new Set<string>();
+        rows.forEach((row: any) => {
+            try {
+                const tags = JSON.parse(row.tags_json) as string[];
+                tags.forEach((tag) => allTags.add(tag));
+            } catch {
+                // Ignore invalid JSON
+            }
+        });
+
+        return Array.from(allTags).sort();
+    } catch (error) {
+        console.error("Failed to get tags:", error);
+        return [];
     }
+}
+
+/**
+ * Get tag usage counts
+ */
+export async function getTagCounts(): Promise<Map<string, number>> {
     try {
-        window.dispatchEvent(new CustomEvent(PHRASES_UPDATED_EVENT));
-    } catch {
-        // ignore in non-browser
+        const db = await ensureDb();
+        const rows = await db.select(
+            "SELECT tags_json FROM phrases WHERE tags_json IS NOT NULL AND tags_json != ''",
+        );
+
+        const tagCounts = new Map<string, number>();
+        rows.forEach((row: any) => {
+            try {
+                const tags = JSON.parse(row.tags_json) as string[];
+                tags.forEach((tag) => {
+                    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+                });
+            } catch {
+                // Ignore invalid JSON
+            }
+        });
+
+        return tagCounts;
+    } catch (error) {
+        console.error("Failed to get tag counts:", error);
+        return new Map();
     }
-    return { moved };
+}
+
+/**
+ * Migrate existing phrases to include stemmed data
+ */
+export async function migrateExistingPhrasesToStemmed(): Promise<void> {
+    try {
+        const db = await ensureDb();
+
+        // Find phrases that don't have stemmed data yet
+        const phrasesToMigrate = await db.select(
+            "SELECT id, lang, text, translation, context FROM phrases WHERE text_stemmed IS NULL OR text_stemmed = ''",
+        );
+
+        for (const phrase of phrasesToMigrate) {
+            try {
+                const stemmed = generateStemmedPhrase({
+                    text: phrase.text,
+                    translation: phrase.translation,
+                    context: phrase.context,
+                    lang: phrase.lang,
+                });
+
+                await db.execute(
+                    "UPDATE phrases SET text_stemmed = ?, translation_stemmed = ?, context_stemmed = ? WHERE id = ?",
+                    [
+                        stemmed.textStemmed,
+                        stemmed.translationStemmed,
+                        stemmed.contextStemmed,
+                        phrase.id,
+                    ],
+                );
+            } catch (error) {
+                console.error(`Failed to migrate phrase ${phrase.id}:`, error);
+            }
+        }
+
+        // Rebuild FTS index to include stemmed data
+        try {
+            await db.execute(`INSERT INTO phrases_fts(phrases_fts) VALUES('rebuild')`);
+            console.log("FTS index rebuilt with stemmed data");
+        } catch (error) {
+            console.error("Failed to rebuild FTS index:", error);
+        }
+
+        console.log(`Migration completed for ${phrasesToMigrate.length} phrases`);
+    } catch (error) {
+        console.error("Failed to migrate existing phrases to stemmed format:", error);
+    }
+}
+
+/**
+ * Clear all data from the database (for testing)
+ */
+export async function clearAllData(): Promise<void> {
+    try {
+        const db = await ensureDb();
+        await db.execute("DELETE FROM phrases");
+        console.log("Database cleared");
+    } catch (error) {
+        console.error("Failed to clear database:", error);
+        throw error;
+    }
+}
+
+/**
+ * Seed the database with sample data for development/testing
+ */
+export async function seedSampleData(): Promise<void> {
+    try {
+        const db = await ensureDb();
+
+        // Check if we already have data
+        const existingCount = await db.select("SELECT COUNT(*) as count FROM phrases");
+        if (existingCount[0]?.count > 0) {
+            console.log("Database already has data, skipping seed");
+            return;
+        }
+
+        const samplePhrases = [
+            {
+                text: "perfect woman",
+                translation: "mujer perfecta",
+                context:
+                    "Mr. Morcheck awoke with a sour taste in his mouth and a laugh ringing in his ears.",
+                tags: ["character", "description"],
+                lang: "en",
+                sourceFile: "the-perfect-woman.txt",
+                contentHash: "abc123",
+                lineNo: 1,
+                colOffset: 0,
+            },
+            {
+                text: "sour taste",
+                translation: "sabor amargo",
+                context:
+                    "Mr. Morcheck awoke with a sour taste in his mouth and a laugh ringing in his ears.",
+                tags: ["sensation", "description"],
+                lang: "en",
+                sourceFile: "the-perfect-woman.txt",
+                contentHash: "abc123",
+                lineNo: 1,
+                colOffset: 25,
+            },
+            {
+                text: "laugh ringing",
+                translation: "risa resonando",
+                context:
+                    "Mr. Morcheck awoke with a sour taste in his mouth and a laugh ringing in his ears.",
+                tags: ["sound", "memory"],
+                lang: "en",
+                sourceFile: "the-perfect-woman.txt",
+                contentHash: "abc123",
+                lineNo: 1,
+                colOffset: 65,
+            },
+            {
+                text: "Triad Morgan party",
+                translation: "fiesta de Triad Morgan",
+                context:
+                    "It was George Owen-Clark's laugh the last thing he remembered from the Triad Morgan party.",
+                tags: ["event", "proper-noun"],
+                lang: "en",
+                sourceFile: "the-perfect-woman.txt",
+                contentHash: "abc123",
+                lineNo: 2,
+                colOffset: 0,
+            },
+            {
+                text: "George Owen-Clark",
+                translation: "George Owen-Clark",
+                context:
+                    "It was George Owen-Clark's laugh the last thing he remembered from the Triad Morgan party.",
+                tags: ["character", "proper-noun"],
+                lang: "en",
+                sourceFile: "the-perfect-woman.txt",
+                contentHash: "abc123",
+                lineNo: 2,
+                colOffset: 10,
+            },
+        ];
+
+        for (const phrase of samplePhrases) {
+            await savePhrase(phrase);
+        }
+
+        console.log(`Seeded database with ${samplePhrases.length} sample phrases`);
+    } catch (error) {
+        console.error("Failed to seed sample data:", error);
+    }
 }

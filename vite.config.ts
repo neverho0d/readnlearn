@@ -19,10 +19,19 @@ export default defineConfig({
             "@/types": resolve(__dirname, "./app/src/types"),
         },
     },
+    define: {
+        // Expose Tauri environment variables to client-side code
+        __TAURI_PLATFORM__: JSON.stringify(process.env.TAURI_PLATFORM),
+        __TAURI_DEBUG__: JSON.stringify(process.env.TAURI_DEBUG),
+    },
     server: {
         port: 1420,
         strictPort: true,
         watch: { ignored: ["**/src-tauri/**", "**/*.tsx"] },
+        headers: {
+            "Cross-Origin-Embedder-Policy": "require-corp",
+            "Cross-Origin-Opener-Policy": "same-origin",
+        },
     },
     build: {
         target: process.env.TAURI_PLATFORM === "windows" ? "chrome105" : "safari13",

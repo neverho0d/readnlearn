@@ -29,12 +29,56 @@ export function calculatePhrasePosition(phrase: SavedPhrase, text: string): numb
     position = text.toLowerCase().indexOf(phrase.text.toLowerCase());
     if (position >= 0) return position;
 
-    // 3) Use saved line/column position as fallback
+    // 3) Try to find phrase with markdown syntax stripped
+    // This handles cases where the phrase was selected from rendered text
+    const strippedText = text
+        .replace(/\*\*(.*?)\*\*/g, "$1") // Remove bold
+        .replace(/\*(.*?)\*/g, "$1") // Remove italic
+        .replace(/`(.*?)`/g, "$1") // Remove code
+        .replace(/#{1,6}\s+/g, "") // Remove headers
+        .replace(/\n+/g, " ") // Normalize whitespace
+        .replace(/\s+/g, " "); // Normalize spaces
+
+    position = strippedText.indexOf(phrase.text);
+    if (position >= 0) {
+        // Map back to original text position
+        const originalPosition = mapStrippedPositionToOriginal(text, strippedText, position);
+        if (originalPosition >= 0) return originalPosition;
+    }
+
+    // 4) Use saved line/column position as fallback
     if (phrase.lineNo !== undefined && phrase.colOffset !== undefined) {
         const lines = text.split(/\n/);
         const lineIndex = Math.max(0, Math.min(lines.length - 1, (phrase.lineNo || 1) - 1));
         const before = lines.slice(0, lineIndex).join("\n");
         return before.length + (lineIndex > 0 ? 1 : 0) + (phrase.colOffset || 0);
+    }
+
+    return -1;
+}
+
+/**
+ * Map position from stripped text back to original text
+ */
+function mapStrippedPositionToOriginal(
+    originalText: string,
+    strippedText: string,
+    strippedPosition: number,
+): number {
+    let originalIndex = 0;
+    let strippedIndex = 0;
+
+    while (originalIndex < originalText.length && strippedIndex < strippedText.length) {
+        if (originalText[originalIndex] === strippedText[strippedIndex]) {
+            if (strippedIndex === strippedPosition) {
+                return originalIndex;
+            }
+            originalIndex++;
+            strippedIndex++;
+        } else {
+            // Skip markdown syntax in original text
+            originalIndex++;
+        }
     }
 
     return -1;
