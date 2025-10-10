@@ -37,7 +37,6 @@ export interface BrowserSearchPhrase {
 export class BrowserDatabase {
     private phrases: Map<string, BrowserPhrase> = new Map();
     private search: Map<string, BrowserSearchPhrase> = new Map();
-    private nextId: number = 1;
 
     constructor() {
         console.log("Browser in-memory database initialized");
