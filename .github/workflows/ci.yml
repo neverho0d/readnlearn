@@ -35,6 +35,9 @@ jobs:
 
             - name: Run tests with coverage
               run: npm run test:coverage
+              env:
+                  VITE_SUPABASE_URL: https://mock.supabase.co
+                  VITE_SUPABASE_ANON_KEY: mock-anon-key
 
             - name: Upload coverage reports
               uses: codecov/codecov-action@v5
