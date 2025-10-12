@@ -10,6 +10,9 @@ jobs:
     test:
         name: Test & Coverage
         runs-on: ubuntu-latest
+        env:
+            VITE_SUPABASE_URL: https://mock.supabase.co
+            VITE_SUPABASE_ANON_KEY: mock-anon-key
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
