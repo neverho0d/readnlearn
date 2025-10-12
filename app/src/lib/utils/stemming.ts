@@ -15,6 +15,7 @@ import { stemmer } from "stemmer";
 
 // For now we ship only an English stemmer that works in the browser.
 // Other languages fall back to a no-op stem to avoid breaking.
+// eslint-disable-next-line no-unused-vars
 type StemmerFn = (word: string) => string;
 const LANGUAGE_STEMMERS: Record<string, StemmerFn> = {
     en: stemmer,

@@ -19,6 +19,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { SettingsProvider } from "./lib/settings/SettingsContext";
 import { I18nProvider } from "./lib/i18n/I18nContext";
 import { ThemeProvider } from "./lib/settings/ThemeContext";
+import { AuthProvider, useAuth } from "./lib/auth/AuthContext";
 import { LanguageSettings } from "./features/settings/LanguageSettings";
 import { TextReader } from "./features/reader/TextReader";
 import "./App.css";
@@ -27,6 +28,8 @@ import { EnhancedDictionaryView } from "./features/phrases/EnhancedDictionaryVie
 import { PHRASES_UPDATED_EVENT } from "./lib/db/phraseStore";
 import { useAppMode } from "./lib/state/appMode";
 import { generateContentHash } from "./lib/db/phraseStore";
+import { AuthScreen } from "./features/auth/AuthScreen";
+import { OAuthCallback } from "./features/auth/OAuthCallback";
 
 /**
  * Main App Component
@@ -37,8 +40,51 @@ import { generateContentHash } from "./lib/db/phraseStore";
  * - sourceFile: Name/path of the currently loaded file
  * - restored: Prevents multiple restoration attempts on startup
  */
-function App() {
+function AppContent() {
+    const { session, loading } = useAuth();
+
+    // Show loading screen while checking authentication
+    if (loading) {
+        return (
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100vh",
+                    backgroundColor: "var(--bg-primary)",
+                    color: "var(--text-primary)",
+                }}
+            >
+                <div style={{ textAlign: "center" }}>
+                    <div
+                        style={{
+                            width: "40px",
+                            height: "40px",
+                            border: "4px solid var(--border)",
+                            borderTop: "4px solid var(--primary)",
+                            borderRadius: "50%",
+                            animation: "spin 1s linear infinite",
+                            margin: "0 auto 1rem",
+                        }}
+                    ></div>
+                    <p>Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show authentication screen if not logged in
+    if (!session) {
+        return <AuthScreen />;
+    }
+
+    return <MainAppContent />;
+}
+
+function MainAppContent() {
     const mode = useAppMode((s) => s.mode);
+
     // Application state for file loading and content management
     const [isLoading, setIsLoading] = useState(false);
     const [externalText, setExternalText] = useState<string | null>(null);
@@ -53,7 +99,7 @@ function App() {
 
     // Saved phrases for the current content (reading mode)
     const [savedPhrases, setSavedPhrases] = useState<
-        Array<{ id: string; text: string; position: number }>
+        Array<{ id: string; text: string; position: number; formulaPosition?: number }>
     >([]);
 
     // Set application title on mount
@@ -66,7 +112,9 @@ function App() {
      * This function loads phrases that are associated with the current text content
      */
     const loadSavedPhrases = useCallback(async () => {
+        console.log("🔄 loadSavedPhrases called");
         if (!externalText) {
+            console.log("❌ No external text, clearing phrases");
             setSavedPhrases([]);
             return;
         }
@@ -74,13 +122,21 @@ function App() {
         try {
             const { loadPhrasesForContent } = await import("./lib/phrases/phraseManager");
 
+            const contentHash = generateContentHash(externalText);
+            console.log("🔍 Loading phrases for content:", {
+                contentLength: externalText.length,
+                sourceFile: sourceFile || "undefined",
+                contentHash,
+                contentPreview: externalText.substring(0, 100) + "...",
+            });
+
             const phrases = await loadPhrasesForContent({
                 content: externalText,
                 sourceFile: sourceFile || undefined,
-                contentHash: generateContentHash(externalText),
+                contentHash,
             });
 
-            console.log("Loaded phrases for content:", phrases);
+            console.log("📋 Loaded phrases for content:", phrases.length, "phrases");
 
             // Transform to expected format for TextReader
             const transformedPhrases = phrases.map((p) => ({
@@ -89,7 +145,15 @@ function App() {
                 position: p.position,
             }));
 
-            console.log("Transformed phrases:", transformedPhrases);
+            console.log("🔄 Setting saved phrases:", transformedPhrases.length, "phrases");
+            console.log(
+                "📋 Phrases being passed to TextReader:",
+                transformedPhrases.map((p) => ({
+                    id: p.id,
+                    text: p.text.substring(0, 50) + "...",
+                    position: p.position,
+                })),
+            );
             setSavedPhrases(transformedPhrases);
         } catch (error) {
             console.error("Error loading saved phrases:", error);
@@ -105,11 +169,17 @@ function App() {
     // Listen for phrase updates to refresh the phrase list
     useEffect(() => {
         const handlePhrasesUpdated = () => {
-            loadSavedPhrases();
+            console.log("🔄 PHRASES_UPDATED_EVENT received, reloading phrases...");
+            // Add a small delay to ensure the database has been updated
+            setTimeout(() => {
+                loadSavedPhrases();
+            }, 100);
         };
 
+        console.log("🎧 Setting up PHRASES_UPDATED_EVENT listener");
         window.addEventListener(PHRASES_UPDATED_EVENT, handlePhrasesUpdated);
         return () => {
+            console.log("🧹 Cleaning up PHRASES_UPDATED_EVENT listener");
             window.removeEventListener(PHRASES_UPDATED_EVENT, handlePhrasesUpdated);
         };
     }, [loadSavedPhrases]);
@@ -118,164 +188,20 @@ function App() {
      * Detects which phrases are currently visible in the main text area
      * This function scans for phrase anchors and checks if they're in the viewport
      */
-    const detectVisiblePhrases = useCallback(() => {
-        console.log("🔍 detectVisiblePhrases called", { followText, externalText: !!externalText });
+    // detectVisiblePhrases function moved to TextReader component
 
-        if (!followText || !externalText) {
-            console.log("❌ Early return: followText or externalText missing");
-            setVisiblePhrases(new Set());
-            return;
-        }
-
-        const mainPane = document.querySelector(".main-pane");
-        if (!mainPane) {
-            console.log("❌ Main pane not found");
-            return;
-        }
-
-        // Find the actual scrollable parent container (the one with overflow: auto)
-        const scrollContainer =
-            mainPane.closest('div[style*="overflow: auto"]') || mainPane.parentElement;
-        if (!scrollContainer) {
-            console.log("❌ Scroll container not found");
-            return;
-        }
-
-        // Get the scroll container's dimensions and position
-        const rect = scrollContainer.getBoundingClientRect();
-        const scrollTop = scrollContainer.scrollTop;
-        const clientHeight = scrollContainer.clientHeight;
-
-        // Use the scroll container's actual position in the viewport
-        const viewportTop = rect.top;
-        const viewportBottom = rect.bottom;
-
-        console.log("📐 Viewport bounds:", {
-            scrollContainer: scrollContainer.tagName,
-            scrollContainerClass: scrollContainer.className,
-            scrollTop,
-            clientHeight,
-            viewportTop,
-            viewportBottom,
-            scrollContainerRect: rect,
-        });
-
-        const phraseAnchors = document.querySelectorAll(".phrase-anchor");
-        console.log("🎯 Found phrase anchors:", phraseAnchors.length);
-
-        const visible = new Set<string>();
-
-        phraseAnchors.forEach((anchor, index) => {
-            const anchorRect = anchor.getBoundingClientRect();
-
-            // Check if the anchor is visible within the main pane's scrollable area
-            // Both anchorRect and viewport are relative to browser viewport
-            const isVisible = anchorRect.bottom > viewportTop && anchorRect.top < viewportBottom;
-            const phraseId = anchor.getAttribute("data-phrase-id");
-
-            console.log(`📍 Anchor ${index}:`, {
-                phraseId,
-                isVisible,
-                anchorTop: anchorRect.top,
-                anchorBottom: anchorRect.bottom,
-                viewportTop,
-                viewportBottom,
-                // Show the actual calculation
-                bottomCheck: `${anchorRect.bottom} > ${viewportTop} = ${anchorRect.bottom > viewportTop}`,
-                topCheck: `${anchorRect.top} < ${viewportBottom} = ${anchorRect.top < viewportBottom}`,
-            });
-
-            if (isVisible) {
-                if (phraseId) {
-                    visible.add(phraseId);
-                    console.log("✅ Added to visible:", phraseId);
-                } else {
-                    console.log("❌ No phrase ID found for visible anchor");
-                }
-            } else {
-                console.log("❌ Not visible:", phraseId);
-            }
-        });
-
-        setVisiblePhrases(visible);
-
-        // Debug logging removed for production
-    }, [followText, externalText]);
-
-    // Set up scroll event listeners for phrase visibility detection
-    useEffect(() => {
-        if (!followText || !externalText) return;
-        if (mode !== "reading") return;
-
-        const mainPane = document.querySelector(".main-pane");
-        if (!mainPane) return;
-
-        // Find the actual scrollable parent container (the one with overflow: auto)
-        const scrollContainer =
-            mainPane.closest('div[style*="overflow: auto"]') || mainPane.parentElement;
-        if (!scrollContainer) return;
-
-        console.log(
-            "🎯 Setting up scroll listeners on:",
-            scrollContainer.tagName,
-            scrollContainer.className,
-        );
-
-        // Throttle scroll events for better performance
-        let timeoutId: ReturnType<typeof setTimeout>;
-        const handleScroll = () => {
-            console.log("📜 Scroll event triggered");
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(detectVisiblePhrases, 50);
-        };
-
-        scrollContainer.addEventListener("scroll", handleScroll);
-
-        // Also detect on resize
-        window.addEventListener("resize", handleScroll);
-
-        // Initial detection with a small delay to ensure DOM is ready
-        setTimeout(detectVisiblePhrases, 100);
-
-        return () => {
-            console.log("🧹 Cleaning up scroll listeners");
-            scrollContainer.removeEventListener("scroll", handleScroll);
-            window.removeEventListener("resize", handleScroll);
-            clearTimeout(timeoutId);
-        };
-    }, [followText, detectVisiblePhrases, savedPhrases, mode]);
-
-    // Update visible phrases when followText changes
-    useEffect(() => {
-        if (followText) {
-            detectVisiblePhrases();
-        } else {
-            setVisiblePhrases(new Set());
-        }
-    }, [followText, detectVisiblePhrases]);
+    // Phrase visibility detection is now handled by TextReader component
 
     // Update visible phrases when savedPhrases change (phrases are loaded/updated)
-    useEffect(() => {
-        if (followText && savedPhrases.length > 0) {
-            // Small delay to ensure DOM is updated with new phrases
-            setTimeout(detectVisiblePhrases, 200);
-        }
-    }, [savedPhrases, followText, detectVisiblePhrases]);
+    // This is now handled by TextReader component
 
     // Re-establish detection after mode switches into reading
     useEffect(() => {
         if (mode !== "reading") {
             // Clear when leaving reading mode
             setVisiblePhrases(new Set());
-            return;
         }
-        if (followText && externalText) {
-            const timeoutId = setTimeout(() => {
-                detectVisiblePhrases();
-            }, 200);
-            return () => clearTimeout(timeoutId);
-        }
-    }, [mode, followText, externalText, detectVisiblePhrases]);
+    }, [mode]);
 
     /**
      * Handles the follow text toggle
@@ -304,7 +230,17 @@ function App() {
             const lastName = localStorage.getItem("readnlearn-last-file-name");
             const lastPath = localStorage.getItem("readnlearn-last-file-path");
             const lastContent = localStorage.getItem("readnlearn-last-file-content");
-            if (!lastName) return;
+
+            if (!lastName) {
+                // Check if we have content but no filename - this might be a restoration issue
+                if (lastContent && lastContent.length > 0) {
+                    const fallbackName = "restored-file.txt";
+                    setExternalText(lastContent);
+                    setSourceFile(fallbackName);
+                    localStorage.setItem("readnlearn-instructions-dismissed", "true");
+                }
+                return;
+            }
 
             const trySet = (text: string | null) => {
                 if (text && text.length > 0) {
@@ -384,12 +320,32 @@ function App() {
         }
     };
 
+    /**
+     * Handles closing the current file
+     * Clears the loaded file and resets to initial state
+     */
+    const handleCloseFile = () => {
+        setExternalText(null);
+        setSourceFile(null);
+        // Clear saved phrases for the closed file
+        setSavedPhrases([]);
+        // Clear scroll position
+        localStorage.removeItem("readnlearn-scroll-position");
+        // Clear last file name
+        localStorage.removeItem("readnlearn-last-file-name");
+    };
+
     return (
         <SettingsProvider>
             <ThemeProvider>
                 <I18nProvider>
                     <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)" }}>
-                        <LanguageSettings isLoading={isLoading} onLoadFile={handleLoadFile} />
+                        <LanguageSettings
+                            isLoading={isLoading}
+                            onLoadFile={handleLoadFile}
+                            onCloseFile={handleCloseFile}
+                            sourceFile={sourceFile}
+                        />
                         <MainContent
                             isLoading={isLoading}
                             externalText={externalText}
@@ -399,6 +355,7 @@ function App() {
                             followText={followText}
                             visiblePhrases={visiblePhrases}
                             onFollowTextToggle={handleFollowTextToggle}
+                            setVisiblePhrases={setVisiblePhrases}
                             savedPhrases={savedPhrases}
                             setSavedPhrases={setSavedPhrases}
                         />
@@ -408,8 +365,6 @@ function App() {
         </SettingsProvider>
     );
 }
-
-export default App;
 
 /**
  * MainContent Component
@@ -440,9 +395,13 @@ function MainContent(props: {
     visiblePhrases: Set<string>;
     // eslint-disable-next-line no-unused-vars
     onFollowTextToggle: (enabled: boolean) => void;
-    savedPhrases: Array<{ id: string; text: string; position: number }>;
+    // eslint-disable-next-line no-unused-vars
+    setVisiblePhrases: React.Dispatch<React.SetStateAction<Set<string>>>;
+    savedPhrases: Array<{ id: string; text: string; position: number; formulaPosition?: number }>;
     setSavedPhrases: React.Dispatch<
-        React.SetStateAction<Array<{ id: string; text: string; position: number }>>
+        React.SetStateAction<
+            Array<{ id: string; text: string; position: number; formulaPosition?: number }>
+        >
     >;
 }) {
     const mode = useAppMode((s) => s.mode);
@@ -455,9 +414,23 @@ function MainContent(props: {
         followText,
         visiblePhrases,
         onFollowTextToggle,
+        setVisiblePhrases,
         savedPhrases,
         setSavedPhrases,
     } = props;
+
+    // State for text content and phrase management
+    const [currentText, setCurrentText] = useState("");
+
+    // Split pane state
+    const [phrasesCollapsed, setPhrasesCollapsed] = useState<boolean>(() => {
+        try {
+            return localStorage.getItem("readnlearn-phrases-collapsed") === "true";
+        } catch {
+            return false;
+        }
+    });
+    const [dragging, setDragging] = useState(false);
 
     /**
      * Handles the follow text toggle
@@ -469,9 +442,6 @@ function MainContent(props: {
         },
         [onFollowTextToggle],
     );
-
-    // State for text content and phrase management
-    const [currentText, setCurrentText] = useState("");
 
     /**
      * Phrase Loading Functions
@@ -569,14 +539,6 @@ function MainContent(props: {
     // }, [currentText, mode]);
     const containerRef = useRef<HTMLDivElement>(null);
     const [leftRatio, setLeftRatio] = useSplitRatio();
-    const [phrasesCollapsed, setPhrasesCollapsed] = useState<boolean>(() => {
-        try {
-            return localStorage.getItem("readnlearn-phrases-collapsed") === "true";
-        } catch {
-            return false;
-        }
-    });
-    const [dragging, setDragging] = useState(false);
 
     useEffect(() => {
         if (!dragging) return;
@@ -632,31 +594,7 @@ function MainContent(props: {
                 onJump as unknown as () => void,
             );
     }, [phrasesCollapsed]);
-    // Persist and restore scroll position of the left reader pane
-    useEffect(() => {
-        const el = containerRef.current?.querySelector(
-            "div[style*='overflow: auto']",
-        ) as HTMLElement | null;
-        if (!el) return;
-        const keyBase = sourceFile || (externalText ? String(externalText.length) : "");
-        const key = `readnlearn-scroll-${keyBase}`;
-        try {
-            const raw = localStorage.getItem(key);
-            const pos = raw ? parseInt(raw, 10) : NaN;
-            if (!isNaN(pos)) el.scrollTop = pos;
-        } catch {
-            // ignore
-        }
-        const onScroll = () => {
-            try {
-                localStorage.setItem(key, String(el.scrollTop));
-            } catch {
-                // ignore
-            }
-        };
-        el.addEventListener("scroll", onScroll);
-        return () => el.removeEventListener("scroll", onScroll);
-    }, [sourceFile, externalText]);
+    // Scroll position is now handled by TextReader component
 
     return (
         <div style={{ paddingTop: "60px", padding: "80px 20px 20px 20px" }}>
@@ -689,6 +627,8 @@ function MainContent(props: {
                             onTextChange={setCurrentText}
                             sourceFile={sourceFile || undefined}
                             savedPhrases={savedPhrases}
+                            followText={followText}
+                            onVisiblePhrasesChange={setVisiblePhrases}
                         />
                     </div>
                     <div
@@ -794,7 +734,11 @@ function MainContent(props: {
                 </div>
             )}
             {mode === "dictionary" && (
-                <EnhancedDictionaryView sourceFile={sourceFile} hasCurrentFile={!!currentText} />
+                <EnhancedDictionaryView
+                    sourceFile={sourceFile}
+                    hasCurrentFile={!!currentText}
+                    cachedPhrases={savedPhrases}
+                />
             )}
             {mode === "learning" && <div />}
         </div>
@@ -839,3 +783,31 @@ function useSplitRatio() {
 
     return [ratioValue, set] as const;
 }
+
+/**
+ * Main App Component with Providers
+ *
+ * Wraps the application with all necessary context providers.
+ */
+function App() {
+    // Check if we're on the OAuth callback route before rendering providers
+    const isOAuthCallback = window.location.pathname === "/auth/callback";
+
+    if (isOAuthCallback) {
+        return <OAuthCallback />;
+    }
+
+    return (
+        <AuthProvider>
+            <SettingsProvider>
+                <ThemeProvider>
+                    <I18nProvider>
+                        <AppContent />
+                    </I18nProvider>
+                </ThemeProvider>
+            </SettingsProvider>
+        </AuthProvider>
+    );
+}
+
+export default App;

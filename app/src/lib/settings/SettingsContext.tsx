@@ -6,16 +6,17 @@
  * - Language settings (L1 for UI, L2 for content)
  * - Typography settings (font family and size)
  * - Auto-detection preferences
- * - Persistent storage in localStorage
+ * - Persistent storage in Supabase with localStorage fallback
  *
  * Architecture:
  * - Uses React Context for global state management
- * - Implements localStorage persistence with error handling
+ * - Implements Supabase persistence with localStorage fallback
  * - Provides type-safe settings interface
  * - Includes language name resolution utilities
  */
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { supabase } from "../supabase/client";
 
 /**
  * Settings State Interface
@@ -29,6 +30,7 @@ interface SettingsState {
     l2AutoDetect: boolean; // Whether to auto-detect L2 language
     font: string; // UI and reading font family
     fontSize: number; // Base font size in pixels
+    theme: string; // Theme preference (dark/light)
 }
 
 /**
@@ -57,6 +59,7 @@ const DEFAULT_SETTINGS: SettingsState = {
     l2AutoDetect: false, // Manual language selection by default
     font: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif",
     fontSize: 16, // 16px base font size
+    theme: "dark", // Default to dark theme
 };
 
 /**
@@ -98,32 +101,107 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
  * @param children - React children components
  */
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    /**
-     * Initialize settings state from localStorage
-     *
-     * Attempts to load settings from localStorage, falling back to defaults
-     * if localStorage is unavailable or contains invalid data.
-     * Uses lazy initialization to avoid unnecessary localStorage access.
-     */
-    const [settings, setSettings] = useState<SettingsState>(() => {
-        try {
-            const raw = localStorage.getItem("readnlearn-settings");
-            return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
-        } catch {
-            // Gracefully handle localStorage errors (private browsing, quota exceeded, etc.)
-            return DEFAULT_SETTINGS;
-        }
-    });
+    const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
+    const [loading, setLoading] = useState(true);
 
     /**
-     * Persist settings to localStorage
-     *
-     * Automatically saves settings changes to localStorage.
-     * Runs on every settings update to ensure persistence.
+     * Load settings from Supabase with localStorage fallback
      */
     useEffect(() => {
-        localStorage.setItem("readnlearn-settings", JSON.stringify(settings));
-    }, [settings]);
+        const loadSettings = async () => {
+            try {
+                // Try to load from Supabase first (if table exists)
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
+                if (user) {
+                    try {
+                        const { data: userSettings, error } = await supabase
+                            .from("user_settings")
+                            .select("*")
+                            .eq("user_id", user.id)
+                            .single();
+
+                        if (!error && userSettings) {
+                            setSettings({
+                                l1: userSettings.l1,
+                                l2: userSettings.l2,
+                                l2AutoDetect: userSettings.l2_auto_detect,
+                                font: userSettings.font || DEFAULT_SETTINGS.font,
+                                fontSize: userSettings.font_size,
+                                theme: userSettings.theme,
+                            });
+                            setLoading(false);
+                            return;
+                        } else if (error) {
+                            console.log("Supabase settings error (table may not exist):", error);
+                            // Continue to localStorage fallback
+                        }
+                    } catch (supabaseError) {
+                        console.log("Supabase connection error:", supabaseError);
+                        // Continue to localStorage fallback
+                    }
+                }
+
+                // Fallback to localStorage
+                try {
+                    const raw = localStorage.getItem("readnlearn-settings");
+                    if (raw) {
+                        const localSettings = JSON.parse(raw);
+                        setSettings({ ...DEFAULT_SETTINGS, ...localSettings });
+                    }
+                } catch {
+                    // Use defaults if localStorage fails
+                }
+            } catch (error) {
+                console.error("Failed to load settings:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadSettings();
+    }, []);
+
+    /**
+     * Persist settings to Supabase and localStorage
+     */
+    useEffect(() => {
+        if (loading) return;
+
+        const saveSettings = async () => {
+            try {
+                // Save to localStorage as backup
+                localStorage.setItem("readnlearn-settings", JSON.stringify(settings));
+
+                // Try to save to Supabase (if table exists)
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
+                if (user) {
+                    try {
+                        await supabase.from("user_settings").upsert({
+                            user_id: user.id,
+                            l1: settings.l1,
+                            l2: settings.l2,
+                            l2_auto_detect: settings.l2AutoDetect,
+                            font: settings.font,
+                            font_size: settings.fontSize,
+                            theme: settings.theme,
+                            updated_at: new Date().toISOString(),
+                        });
+                    } catch (supabaseError) {
+                        console.log("Supabase save error (table may not exist):", supabaseError);
+                        // Settings are already saved to localStorage, so this is not critical
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to save settings:", error);
+            }
+        };
+
+        saveSettings();
+    }, [settings, loading]);
 
     /**
      * Update settings with partial state

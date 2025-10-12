@@ -19,6 +19,39 @@ import {
     useSettings,
     LANGUAGES,
 } from "../../../../src/lib/settings/SettingsContext";
+import { supabase } from "../../../../src/lib/supabase/client";
+
+// Mock Supabase client
+vi.mock("../../../../src/lib/supabase/client", () => ({
+    supabase: {
+        auth: {
+            getUser: vi.fn(() =>
+                Promise.resolve({
+                    data: { user: { id: "test-user-id" } },
+                    error: null,
+                }),
+            ),
+        },
+        from: vi.fn(() => ({
+            select: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                    single: vi.fn(() =>
+                        Promise.resolve({
+                            data: null,
+                            error: { message: "Table not found" },
+                        }),
+                    ),
+                })),
+            })),
+            upsert: vi.fn(() =>
+                Promise.resolve({
+                    data: null,
+                    error: null,
+                }),
+            ),
+        })),
+    },
+}));
 
 // Mock localStorage
 const mockLocalStorage = {
@@ -104,7 +137,7 @@ describe("SettingsContext", () => {
             expect(screen.getByTestId("fontSize")).toHaveTextContent("16");
         });
 
-        it("loads settings from localStorage on initialization", () => {
+        it("loads settings from localStorage on initialization", async () => {
             const storedSettings = {
                 l1: "fr",
                 l2: "de",
@@ -112,6 +145,26 @@ describe("SettingsContext", () => {
                 font: "Arial, sans-serif",
                 fontSize: 18,
             };
+
+            // Mock Supabase to return an error (triggers localStorage fallback)
+            vi.mocked(supabase.from).mockReturnValue({
+                select: vi.fn(() => ({
+                    eq: vi.fn(() => ({
+                        single: vi.fn(() =>
+                            Promise.resolve({
+                                data: null,
+                                error: { message: "Table not found" },
+                            }),
+                        ),
+                    })),
+                })),
+                upsert: vi.fn(() =>
+                    Promise.resolve({
+                        data: null,
+                        error: null,
+                    }),
+                ),
+            });
 
             mockLocalStorage.getItem.mockReturnValue(JSON.stringify(storedSettings));
 
@@ -121,11 +174,13 @@ describe("SettingsContext", () => {
                 </SettingsProvider>,
             );
 
-            expect(screen.getByTestId("l1")).toHaveTextContent("fr");
-            expect(screen.getByTestId("l2")).toHaveTextContent("de");
-            expect(screen.getByTestId("l2AutoDetect")).toHaveTextContent("true");
-            expect(screen.getByTestId("font")).toHaveTextContent("Arial, sans-serif");
-            expect(screen.getByTestId("fontSize")).toHaveTextContent("18");
+            await waitFor(() => {
+                expect(screen.getByTestId("l1")).toHaveTextContent("fr");
+                expect(screen.getByTestId("l2")).toHaveTextContent("de");
+                expect(screen.getByTestId("l2AutoDetect")).toHaveTextContent("true");
+                expect(screen.getByTestId("font")).toHaveTextContent("Arial, sans-serif");
+                expect(screen.getByTestId("fontSize")).toHaveTextContent("18");
+            });
         });
 
         it("handles localStorage errors gracefully", () => {
@@ -377,7 +432,27 @@ describe("SettingsContext", () => {
             expect(screen.getByTestId("l1")).toHaveTextContent("en");
         });
 
-        it("handles partial settings in localStorage", () => {
+        it("handles partial settings in localStorage", async () => {
+            // Mock Supabase to return an error (triggers localStorage fallback)
+            vi.mocked(supabase.from).mockReturnValue({
+                select: vi.fn(() => ({
+                    eq: vi.fn(() => ({
+                        single: vi.fn(() =>
+                            Promise.resolve({
+                                data: null,
+                                error: { message: "Table not found" },
+                            }),
+                        ),
+                    })),
+                })),
+                upsert: vi.fn(() =>
+                    Promise.resolve({
+                        data: null,
+                        error: null,
+                    }),
+                ),
+            });
+
             const partialSettings = { l1: "fr", fontSize: 20 };
             mockLocalStorage.getItem.mockReturnValue(JSON.stringify(partialSettings));
 
@@ -387,12 +462,34 @@ describe("SettingsContext", () => {
                 </SettingsProvider>,
             );
 
-            expect(screen.getByTestId("l1")).toHaveTextContent("fr");
-            expect(screen.getByTestId("l2")).toHaveTextContent("es"); // Default value
-            expect(screen.getByTestId("fontSize")).toHaveTextContent("20");
+            await waitFor(() => {
+                expect(screen.getByTestId("l1")).toHaveTextContent("fr");
+                expect(screen.getByTestId("l2")).toHaveTextContent("es"); // Default value
+                expect(screen.getByTestId("fontSize")).toHaveTextContent("20");
+            });
         });
 
-        it("handles settings with extra properties", () => {
+        it("handles settings with extra properties", async () => {
+            // Mock Supabase to return an error (triggers localStorage fallback)
+            vi.mocked(supabase.from).mockReturnValue({
+                select: vi.fn(() => ({
+                    eq: vi.fn(() => ({
+                        single: vi.fn(() =>
+                            Promise.resolve({
+                                data: null,
+                                error: { message: "Table not found" },
+                            }),
+                        ),
+                    })),
+                })),
+                upsert: vi.fn(() =>
+                    Promise.resolve({
+                        data: null,
+                        error: null,
+                    }),
+                ),
+            });
+
             const settingsWithExtra = {
                 l1: "fr",
                 l2: "de",
@@ -410,8 +507,10 @@ describe("SettingsContext", () => {
                 </SettingsProvider>,
             );
 
-            expect(screen.getByTestId("l1")).toHaveTextContent("fr");
-            expect(screen.getByTestId("l2")).toHaveTextContent("de");
+            await waitFor(() => {
+                expect(screen.getByTestId("l1")).toHaveTextContent("fr");
+                expect(screen.getByTestId("l2")).toHaveTextContent("de");
+            });
         });
     });
 

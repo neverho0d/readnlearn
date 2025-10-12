@@ -13,6 +13,7 @@ export default [
             "coverage/**",
             "src-tauri/target/**",
             "node_modules/**",
+            "scripts/**",
         ],
     },
 

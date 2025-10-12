@@ -5,6 +5,181 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import { PhraseSelector } from "./PhraseSelector";
 import { savePhrase, generateContentHash } from "../../lib/db/phraseStore";
 
+/**
+ * Find phrase in text using flexible whitespace regex matching
+ * Handles any combination of spaces, newlines, tabs, and other whitespace
+ *
+ * @param phraseText - The phrase text to search for
+ * @param text - The text content to search in
+ * @returns The position of the phrase in the text, or -1 if not found
+ */
+export function findPhraseWithFlexibleWhitespace(phraseText: string, text: string): number {
+    // 1) Try exact match first (fastest)
+    let position = text.indexOf(phraseText);
+    if (position >= 0) {
+        return position;
+    }
+
+    // 2) Try case-insensitive exact match
+    position = text.toLowerCase().indexOf(phraseText.toLowerCase());
+    if (position >= 0) {
+        return position;
+    }
+
+    // 3) Build flexible regex pattern for whitespace variations
+    const words = phraseText.trim().split(/\s+/);
+    if (words.length === 0) {
+        return -1;
+    }
+
+    // Escape special regex characters in each word
+    const escapedWords = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+
+    // Create regex pattern: word1(\s+|\n+|\r+|\r\n)word2(\s+|\n+|\r+|\r\n)word3...
+    // This allows any combination of whitespace between words
+    const regexPattern = escapedWords.join("(\\s+|\\n+|\\r+|\\r\\n|\\t+)+");
+
+    try {
+        const regex = new RegExp(regexPattern, "gi");
+        const match = text.match(regex);
+
+        if (match) {
+            return text.search(regex);
+        }
+    } catch {
+        // Regex error, continue to fallback
+    }
+
+    // 4) Try with normalized whitespace as fallback
+    const normalizedPhrase = phraseText
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .replace(/\n+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const normalizedText = text
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .replace(/\n+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    position = normalizedText.toLowerCase().indexOf(normalizedPhrase.toLowerCase());
+    if (position >= 0) {
+        // Map back to original text position
+        let originalIndex = 0;
+        let normalizedIndex = 0;
+
+        while (originalIndex < text.length && normalizedIndex < normalizedText.length) {
+            if (normalizedIndex === position) {
+                return originalIndex;
+            }
+
+            const originalChar = text[originalIndex];
+            const normalizedChar = normalizedText[normalizedIndex];
+
+            if (originalChar === normalizedChar) {
+                originalIndex++;
+                normalizedIndex++;
+            } else if (/\s/.test(originalChar)) {
+                // Skip whitespace in original that gets normalized
+                originalIndex++;
+            } else {
+                originalIndex++;
+                normalizedIndex++;
+            }
+        }
+    }
+
+    return -1;
+}
+
+/**
+ * Find the actual matched text at the given position
+ * This handles cases where the phrase text differs from the actual text due to whitespace
+ *
+ * @param phraseText - The phrase text to search for
+ * @param text - The text content to search in
+ * @param startPosition - The starting position to search from
+ * @returns The actual matched text from the content
+ */
+export function findActualMatchedText(
+    phraseText: string,
+    text: string,
+    startPosition: number,
+): string {
+    // Try to find the phrase using the same flexible regex approach
+    const words = phraseText.trim().split(/\s+/);
+    const escapedWords = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regexPattern = escapedWords.join("(\\s+|\\n+|\\r+|\\r\\n|\\t+)+");
+
+    try {
+        const regex = new RegExp(regexPattern, "gi");
+        // Search within the limited text scope from startPosition
+        const textFromPosition = text.substring(startPosition);
+        const match = textFromPosition.match(regex);
+
+        if (match && match[0]) {
+            return match[0];
+        }
+    } catch {
+        // Regex error, continue to fallback
+    }
+
+    // Enhanced fallback: try to find the phrase by searching for the longest possible match
+    const approaches = [
+        // 1) Try exact match from position
+        () => {
+            const exactMatch = text.substring(startPosition, startPosition + phraseText.length);
+            if (exactMatch === phraseText) {
+                return exactMatch;
+            }
+            return null;
+        },
+
+        // 2) Try case-insensitive match
+        () => {
+            const lowerPhrase = phraseText.toLowerCase();
+            const lowerText = text.toLowerCase();
+            const matchIndex = lowerText.indexOf(lowerPhrase, startPosition);
+            if (matchIndex === startPosition) {
+                return text.substring(startPosition, startPosition + phraseText.length);
+            }
+            return null;
+        },
+
+        // 3) Try to find the phrase by searching for key words
+        () => {
+            const keyWords = phraseText.split(/\s+/).filter((word) => word.length > 3);
+            if (keyWords.length > 0) {
+                const firstWord = keyWords[0];
+                const lastWord = keyWords[keyWords.length - 1];
+
+                const firstWordIndex = text.indexOf(firstWord, startPosition);
+                const lastWordIndex = text.indexOf(lastWord, firstWordIndex);
+
+                if (firstWordIndex >= 0 && lastWordIndex >= 0) {
+                    // Find the end of the last word
+                    const lastWordEnd = lastWordIndex + lastWord.length;
+                    return text.substring(startPosition, lastWordEnd);
+                }
+            }
+            return null;
+        },
+    ];
+
+    for (const approach of approaches) {
+        const result = approach();
+        if (result) {
+            return result;
+        }
+    }
+
+    // Final fallback: use original phrase text
+    return phraseText;
+}
+
 interface TextReaderProps {
     content?: string;
     // eslint-disable-next-line no-unused-vars
@@ -14,7 +189,9 @@ interface TextReaderProps {
     // eslint-disable-next-line no-unused-vars
     onTextChange?: (text: string) => void;
     sourceFile?: string;
-    savedPhrases?: Array<{ id: string; text: string; position: number }>;
+    savedPhrases?: Array<{ id: string; text: string; position: number; formulaPosition?: number }>;
+    followText?: boolean;
+    onVisiblePhrasesChange?: (visiblePhrases: Set<string>) => void;
 }
 
 export const TextReader: React.FC<TextReaderProps> = ({
@@ -25,6 +202,8 @@ export const TextReader: React.FC<TextReaderProps> = ({
     onTextChange,
     sourceFile,
     savedPhrases = [],
+    followText = false,
+    onVisiblePhrasesChange,
 }) => {
     const { t } = useI18n();
     const { settings } = useSettings();
@@ -36,15 +215,166 @@ export const TextReader: React.FC<TextReaderProps> = ({
     const [hasLoadedSample, setHasLoadedSample] = React.useState(false);
     // savedPhrases are now passed as props from App.tsx
 
+    // Content preparation state to prevent flashing
+    const [isContentPrepared, setIsContentPrepared] = React.useState(false);
+
+    // Scroll position persistence
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    const isProgrammaticScroll = React.useRef(false);
+
     // No direct textarea editing in reader-only mode; text is controlled via loaders
 
     // Sync external content when provided (file open)
     React.useEffect(() => {
         if (content && content !== text) {
+            setIsContentPrepared(false);
             setText(content);
             setShowInstructions(false);
         }
-    }, [content]);
+    }, [content, text]);
+
+    // Save scroll position to localStorage
+    const saveScrollPosition = React.useCallback(() => {
+        if (scrollContainerRef.current) {
+            const scrollTop = scrollContainerRef.current.scrollTop;
+            const scrollData = {
+                position: scrollTop,
+                fontSize: settings.fontSize,
+                timestamp: Date.now(),
+            };
+            localStorage.setItem("readnlearn-scroll-position", JSON.stringify(scrollData));
+        }
+    }, [settings.fontSize]);
+
+    // Restore scroll position from localStorage
+    const restoreScrollPosition = React.useCallback(() => {
+        const savedData = localStorage.getItem("readnlearn-scroll-position");
+        if (savedData && scrollContainerRef.current) {
+            try {
+                const scrollData = JSON.parse(savedData);
+                const savedPosition = scrollData.position;
+                const savedFontSize = scrollData.fontSize;
+
+                // Adjust position based on font size change
+                let adjustedPosition = savedPosition;
+                if (savedFontSize && savedFontSize !== settings.fontSize) {
+                    const fontSizeRatio = settings.fontSize / savedFontSize;
+                    adjustedPosition = Math.round(savedPosition * fontSizeRatio);
+                }
+
+                isProgrammaticScroll.current = true;
+                scrollContainerRef.current.scrollTop = adjustedPosition;
+                // Reset flag after a short delay
+                setTimeout(() => {
+                    isProgrammaticScroll.current = false;
+                }, 100);
+            } catch (error) {
+                // Fallback to old format (just a number)
+                const position = parseInt(savedData, 10);
+                if (!isNaN(position)) {
+                    isProgrammaticScroll.current = true;
+                    scrollContainerRef.current.scrollTop = position;
+                    setTimeout(() => {
+                        isProgrammaticScroll.current = false;
+                    }, 100);
+                }
+            }
+        }
+    }, [settings.fontSize]);
+
+    // Handle scroll events
+    const handleScroll = React.useCallback(() => {
+        // Only save scroll position if it's not a programmatic scroll
+        if (!isProgrammaticScroll.current) {
+            saveScrollPosition();
+        }
+    }, [saveScrollPosition]);
+
+    // Restore scroll position when text changes
+    React.useEffect(() => {
+        if (text && scrollContainerRef.current) {
+            // Use setTimeout to ensure DOM is updated
+            setTimeout(() => {
+                restoreScrollPosition();
+                // Mark content as prepared after scroll position is restored
+                setIsContentPrepared(true);
+            }, 100);
+        } else if (!text) {
+            // No content to load, mark as prepared immediately
+            setIsContentPrepared(true);
+        }
+    }, [text, restoreScrollPosition]);
+
+    // Detect visible phrases for follow text functionality
+    const detectVisiblePhrases = React.useCallback(() => {
+        if (!followText || !scrollContainerRef.current) return;
+
+        const scrollContainer = scrollContainerRef.current;
+        const rect = scrollContainer.getBoundingClientRect();
+
+        const viewportTop = rect.top;
+        const viewportBottom = rect.bottom;
+
+        const phraseAnchors = document.querySelectorAll(".phrase-anchor");
+        const visible = new Set<string>();
+
+        phraseAnchors.forEach((anchor) => {
+            const anchorRect = anchor.getBoundingClientRect();
+            const isVisible = anchorRect.bottom > viewportTop && anchorRect.top < viewportBottom;
+            const phraseId = anchor.getAttribute("data-phrase-id");
+
+            if (isVisible && phraseId) {
+                visible.add(phraseId);
+            }
+        });
+
+        if (onVisiblePhrasesChange) {
+            onVisiblePhrasesChange(visible);
+        }
+    }, [followText, onVisiblePhrasesChange]);
+
+    // Set up scroll event listeners for phrase visibility detection
+    React.useEffect(() => {
+        if (!followText || !scrollContainerRef.current) return;
+
+        const scrollContainer = scrollContainerRef.current;
+
+        // Throttle scroll events for better performance
+        let timeoutId: ReturnType<typeof setTimeout>;
+        const handleScroll = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(detectVisiblePhrases, 50);
+        };
+
+        scrollContainer.addEventListener("scroll", handleScroll);
+        window.addEventListener("resize", handleScroll);
+
+        // Initial detection with a small delay to ensure DOM is ready
+        setTimeout(detectVisiblePhrases, 100);
+
+        return () => {
+            scrollContainer.removeEventListener("scroll", handleScroll);
+            window.removeEventListener("resize", handleScroll);
+            clearTimeout(timeoutId);
+        };
+    }, [followText, detectVisiblePhrases]);
+
+    // Update visible phrases when followText changes
+    React.useEffect(() => {
+        if (followText) {
+            detectVisiblePhrases();
+        } else if (onVisiblePhrasesChange) {
+            onVisiblePhrasesChange(new Set());
+        }
+    }, [followText, detectVisiblePhrases, onVisiblePhrasesChange]);
+
+    // Re-detect visible phrases when savedPhrases change (new phrase added)
+    React.useEffect(() => {
+        if (followText && savedPhrases.length > 0) {
+            // Small delay to ensure DOM is updated with new phrases
+            setTimeout(detectVisiblePhrases, 100);
+        }
+    }, [savedPhrases, followText, detectVisiblePhrases]);
 
     // Notify parent of text changes
     React.useEffect(() => {
@@ -59,27 +389,43 @@ export const TextReader: React.FC<TextReaderProps> = ({
             const custom = e as CustomEvent<{ id: string }>;
             const phrase = savedPhrases.find((p) => p.id === custom.detail?.id);
             if (!phrase) return;
-            // Find the displayed element: we used phrase.id substring(0,4) as marker; use position to locate anchor
-            // Build a CSS selector for anchors near the text position
-            const anchors = Array.from(
-                document.querySelectorAll(".phrase-anchor"),
+
+            // Find all anchors with the same phrase ID (for multi-line phrases)
+            const allAnchors = Array.from(
+                document.querySelectorAll(`[data-phrase-id="${phrase.id}"]`),
             ) as HTMLElement[];
-            if (!anchors.length) return;
-            // Choose the anchor whose marker sup text matches
-            const target = anchors.find((a) => {
-                const sup = a.querySelector(".phrase-marker");
-                return sup && sup.textContent === phrase.id.substring(0, 4);
+
+            if (!allAnchors.length) return;
+
+            // Highlight all segments of the multi-line phrase
+            const originalBackgrounds: string[] = [];
+
+            allAnchors.forEach((anchor) => {
+                // Store original background
+                anchor.style.backgroundColor = "";
+                const computed = getComputedStyle(anchor).backgroundColor;
+                originalBackgrounds.push(computed);
+
+                // Apply highlight
+                anchor.style.backgroundColor = "rgba(180,180,180,0.35)";
             });
-            if (target) {
-                // Reset any previous inline style and use computed color as baseline
-                target.style.backgroundColor = "";
-                const computed = getComputedStyle(target).backgroundColor;
-                target.style.backgroundColor = "rgba(180,180,180,0.35)";
+
+            // Scroll to the first segment
+            if (allAnchors.length > 0) {
+                isProgrammaticScroll.current = true;
+                allAnchors[0].scrollIntoView({ behavior: "smooth", block: "center" });
+                // Reset flag after scroll animation completes
                 setTimeout(() => {
-                    target.style.backgroundColor = computed;
+                    isProgrammaticScroll.current = false;
                 }, 1000);
-                target.scrollIntoView({ behavior: "smooth", block: "center" });
             }
+
+            // Reset all segments after 1 second
+            setTimeout(() => {
+                allAnchors.forEach((anchor, index) => {
+                    anchor.style.backgroundColor = originalBackgrounds[index];
+                });
+            }, 1000);
         };
         window.addEventListener("readnlearn:jump-to-phrase-in-text", handler);
         return () => window.removeEventListener("readnlearn:jump-to-phrase-in-text", handler);
@@ -169,51 +515,72 @@ export const TextReader: React.FC<TextReaderProps> = ({
     // Render text with visual decorations for saved phrases
     const renderTextWithPhrases = (
         text: string,
-        phrases: Array<{ id: string; text: string; position: number }>,
+        phrases: Array<{ id: string; text: string; position: number; formulaPosition?: number }>,
     ) => {
-        if (phrases.length === 0) return text;
+        if (phrases.length === 0) {
+            return text;
+        }
 
         // Process phrases in reverse order to maintain correct positions
-        const sortedPhrases = [...phrases].sort((a, b) => b.position - a.position);
+        // Use formulaPosition for consistent ordering (descending - last to first)
+        const sortedPhrases = [...phrases].sort(
+            (a, b) => (b.formulaPosition || 0) - (a.formulaPosition || 0),
+        );
         let result = text;
+        let lastProcessedEnd = text.length; // Track the end of the last processed phrase for optimization
 
+        // console.log("sortedPhrases before decoration:", sortedPhrases);
         for (const phrase of sortedPhrases) {
-            const start = Math.max(0, phrase.position);
-            // Calculate end position using original text length to ensure we get the full phrase
-            let end = Math.min(text.length, start + phrase.text.length);
+            // console.log("phrase:", phrase, "lastProcessedEnd:", lastProcessedEnd);
+            // Use robust regex-based phrase finding instead of relying on saved positions
+            // Optimize: only search up to the end of the last processed phrase
+            const searchText = result.substring(0, lastProcessedEnd);
+            const start = findPhraseWithFlexibleWhitespace(phrase.text, searchText);
+
+            if (start === -1) {
+                continue;
+            }
+
+            // Find the actual matched text to get the correct length
+            // Pass the full result text and the actual start position in the full text
+            const actualMatchedText = findActualMatchedText(phrase.text, result, start);
+            // console.log("actualMatchedText:", actualMatchedText);
+            const actualLength = actualMatchedText.length;
+
+            // Calculate end position using actual matched text length
+            let end = Math.min(result.length, start + actualLength);
 
             if (start >= 0 && end > start) {
                 // Use the original substring at this position to preserve casing/punctuation
-                const original = text.substring(start, end);
-                console.log("Original phrase:", original, phrase.text);
+                const original = result.substring(start, end);
 
-                // Fix for newline characters: count newlines in the original substring
-                // and adjust the end position to include them
-                const newlineCount = (original.match(/\n/g) || []).length;
-                if (newlineCount > 0) {
-                    // Extend the end position to include the newlines
-                    end = Math.min(text.length, end + newlineCount);
-                    // Re-extract the original with the corrected end position
-                    const correctedOriginal = text.substring(start, end);
-                    console.log(
-                        "Corrected original phrase:",
-                        correctedOriginal,
-                        "newlines found:",
-                        newlineCount,
-                    );
+                // Use the elegant solution: wrap newlines with span tags to handle multi-paragraph phrases
+                // This ensures proper HTML structure while maintaining visual consistency
+                const phraseParts = original.split("\n");
+                const decoratedParts = phraseParts.map((part, index) => {
+                    if (index === phraseParts.length - 1) {
+                        // Last part: end with closing span and marker
+                        if (index === 0) {
+                            // Single part: complete span with marker
+                            return `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+                        } else {
+                            // Last part of multi-part: close previous span and add marker
+                            return `</span>\n<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+                        }
+                    } else if (index === 0) {
+                        // First part (but not last): start with opening span
+                        return `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}`;
+                    } else {
+                        // Middle parts: close previous span and open new one
+                        return `</span>\n<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}`;
+                    }
+                });
 
-                    // Create decorated phrase with superscript marker and data attribute for scroll following
-                    const decoratedPhrase = `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${correctedOriginal}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+                const decoratedPhrase = decoratedParts.join("");
+                result = result.substring(0, start) + decoratedPhrase + result.substring(end);
 
-                    // Replace the phrase in the text, but use the original text for the replacement
-                    result = result.substring(0, start) + decoratedPhrase + result.substring(end);
-                } else {
-                    // No newlines, use original logic
-                    const decoratedPhrase = `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${original}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
-
-                    // Replace the phrase in the text, but use the original text for the replacement
-                    result = result.substring(0, start) + decoratedPhrase + result.substring(end);
-                }
+                // Update the last processed end position for optimization
+                lastProcessedEnd = end;
             }
         }
 
@@ -330,6 +697,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
                 )}
 
                 <div
+                    ref={scrollContainerRef}
                     className="main-pane"
                     style={{
                         border: "none",
@@ -339,11 +707,30 @@ export const TextReader: React.FC<TextReaderProps> = ({
                         cursor: "text",
                         fontFamily: settings.font,
                         fontSize: settings.fontSize,
+                        overflowY: "auto",
+                        maxHeight: "calc(100vh - 200px)",
+                        opacity: isContentPrepared ? 1 : 0,
+                        transition: "opacity 0.2s ease-in-out",
                     }}
                     onMouseUp={handleTextSelection}
                     onTouchEnd={handleTextSelection}
+                    onScroll={handleScroll}
                 >
-                    <MarkdownRenderer content={renderTextWithPhrases(text, savedPhrases)} />
+                    {isContentPrepared ? (
+                        <MarkdownRenderer content={renderTextWithPhrases(text, savedPhrases)} />
+                    ) : (
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                height: "200px",
+                                color: "var(--muted)",
+                            }}
+                        >
+                            Loading...
+                        </div>
+                    )}
                 </div>
 
                 {selectedText && (

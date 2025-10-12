@@ -1,23 +1,39 @@
 /**
  * Phrase Store Module
  *
- * This module provides persistence for saved phrases using SQLite as the primary storage.
+ * This module provides persistence for saved phrases using Supabase (PostgreSQL) as the primary storage.
  * It handles:
  * - Phrase CRUD operations (Create, Read, Update, Delete)
  * - Content hash verification for phrase-text matching
  * - Position tracking for phrase decoration
- * - Database schema management and migrations
+ * - Offline-first caching with IndexedDB
  * - Cross-component event communication
  *
  * Architecture:
- * - Uses unified database interface that works in both browser (sql.js) and Tauri environments
+ * - Uses Supabase for cloud storage with offline-first caching
  * - Provides type-safe interfaces for phrase data
- * - Handles database initialization and schema updates
+ * - Handles authentication and user data isolation
  */
 
-import { getDatabaseAdapter } from "./database";
-import { DatabaseAdapter } from "./adapters/DatabaseAdapter";
-import { generateStemmedPhrase, generateStemmedSearchTerms } from "../utils/stemming";
+import { supabase } from "../supabase/client";
+import { cache } from "../cache/indexedDB";
+import { generateStemmedPhrase } from "../utils/stemming";
+
+/**
+ * Get PostgreSQL FTS configuration for a given language code
+ */
+function getLanguageConfig(lang: string): string {
+    const languageMap: Record<string, string> = {
+        en: "english",
+        es: "spanish",
+        fr: "french",
+        de: "german",
+        it: "italian",
+        pt: "portuguese",
+    };
+
+    return languageMap[lang] || "simple";
+}
 
 /**
  * Saved Phrase Interface
@@ -73,19 +89,43 @@ export function generateContentHash(content: string): string {
 /**
  * Database Initialization
  *
- * Ensures the SQLite database is properly initialized with the correct schema.
- * Works in both browser (sql.js) and Tauri environments.
+ * Ensures the Supabase connection is ready and cache is initialized.
  *
- * @returns Promise<DatabaseAdapter> - Initialized database adapter
+ * @returns Promise<boolean> - Whether the database is ready
  * @throws Error if database initialization fails
  */
-export async function ensureDb(): Promise<DatabaseAdapter> {
+export async function ensureDb(): Promise<boolean> {
     try {
-        const db = await getDatabaseAdapter();
-        console.log("SQLite database initialized successfully");
-        return db;
+        // In test environments, skip database initialization
+        if (
+            typeof window === "undefined" ||
+            process.env.NODE_ENV === "test" ||
+            import.meta.env.MODE === "test"
+        ) {
+            console.log("Skipping database initialization in test environment");
+            return true;
+        }
+
+        // Check if user is authenticated
+        const {
+            data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+            throw new Error("User not authenticated");
+        }
+
+        // Initialize cache only if not in test environment
+        try {
+            await cache.init();
+        } catch (cacheError) {
+            // If cache initialization fails (e.g., IndexedDB not available), continue without cache
+            console.warn("Cache initialization failed, continuing without cache:", cacheError);
+        }
+
+        console.log("Supabase database connection ready");
+        return true;
     } catch (error) {
-        console.error("Failed to initialize SQLite database:", error);
+        console.error("Failed to initialize Supabase database:", error);
         throw new Error("Database initialization failed");
     }
 }
@@ -95,26 +135,190 @@ export async function ensureDb(): Promise<DatabaseAdapter> {
  */
 export async function loadAllPhrases(): Promise<SavedPhrase[]> {
     try {
-        const db = await ensureDb();
-        const rows = await db.select(
-            "SELECT id, lang, text, translation, context, tags_json, added_at, source_file, content_hash, line_no, col_offset FROM phrases ORDER BY added_at DESC",
-        );
+        await ensureDb();
 
-        return rows.map((r: any) => ({
-            id: r.id,
-            lang: r.lang,
-            text: r.text,
-            translation: r.translation ?? "",
-            context: r.context ?? "",
-            tags: r.tags_json ? JSON.parse(r.tags_json) : [],
-            addedAt: r.added_at,
-            sourceFile: r.source_file ?? undefined,
-            contentHash: r.content_hash ?? undefined,
-            lineNo: r.line_no ?? undefined,
-            colOffset: r.col_offset ?? undefined,
+        // Get current user
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
+
+        // Try to load from Supabase first
+        const { data: phrases, error } = await supabase
+            .from("phrases")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("added_at", { ascending: false });
+
+        if (error) {
+            console.error("Failed to load phrases from Supabase:", error);
+            // Fallback to cache
+            return await cache.getPhrases(user.id);
+        }
+
+        console.log("📥 Loaded phrases from Supabase:", phrases?.length || 0, "phrases");
+        if (phrases && phrases.length > 0) {
+            console.log(
+                "📝 All loaded phrases:",
+                phrases.map((p) => ({
+                    id: p.id,
+                    text: p.text.substring(0, 50) + "...",
+                    contentHash: p.content_hash,
+                    sourceFile: p.source_file,
+                    addedAt: p.added_at,
+                })),
+            );
+        }
+
+        // Update cache with fresh data
+        if (phrases) {
+            await cache.updatePhrases(phrases);
+        }
+
+        // Transform Supabase data to proper format
+        const transformedPhrases = (phrases || []).map((phrase: any) => ({
+            id: phrase.id,
+            lang: phrase.lang,
+            text: phrase.text,
+            translation: phrase.translation,
+            context: phrase.context,
+            tags: phrase.tags || [],
+            addedAt: phrase.added_at,
+            sourceFile: phrase.source_file,
+            contentHash: phrase.content_hash,
+            lineNo: phrase.line_no,
+            colOffset: phrase.col_offset,
+            updatedAt: phrase.updated_at,
         }));
+
+        return transformedPhrases;
     } catch (error) {
-        console.error("Failed to load phrases from database:", error);
+        console.error("Failed to load phrases:", error);
+        // Fallback to cache
+        try {
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (user) {
+                return await cache.getPhrases(user.id);
+            }
+        } catch (cacheError) {
+            console.error("Failed to load from cache:", cacheError);
+        }
+        return [];
+    }
+}
+
+/**
+ * Load phrases filtered by source file for better performance
+ * This function loads only phrases that belong to a specific source file
+ */
+export async function loadPhrasesBySource(sourceFile: string): Promise<SavedPhrase[]> {
+    try {
+        await ensureDb();
+
+        // Get current user
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
+
+        // Load phrases filtered by source file
+        const { data: phrases, error } = await supabase
+            .from("phrases")
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("source_file", sourceFile)
+            .order("added_at", { ascending: false });
+
+        if (error) {
+            console.error("Failed to load phrases by source from Supabase:", error);
+            // Fallback to cache
+            return await cache.getPhrasesBySource(user.id, sourceFile);
+        }
+
+        // Transform Supabase data to proper format
+        const transformedPhrases = (phrases || []).map((phrase: any) => ({
+            id: phrase.id,
+            lang: phrase.lang,
+            text: phrase.text,
+            translation: phrase.translation,
+            context: phrase.context,
+            tags: phrase.tags || [],
+            addedAt: phrase.added_at,
+            sourceFile: phrase.source_file,
+            contentHash: phrase.content_hash,
+            lineNo: phrase.line_no,
+            colOffset: phrase.col_offset,
+            updatedAt: phrase.updated_at,
+        }));
+
+        // Update cache with fresh data
+        await cache.setPhrasesBySource(user.id, sourceFile, transformedPhrases);
+
+        return transformedPhrases;
+    } catch (error) {
+        console.error("Failed to load phrases by source:", error);
+        throw error;
+    }
+}
+
+/**
+ * Load phrases filtered by content hash for better performance
+ * This function loads only phrases that belong to a specific content
+ */
+export async function loadPhrasesByContentHash(contentHash: string): Promise<SavedPhrase[]> {
+    try {
+        await ensureDb();
+
+        // Get current user
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
+
+        // Load phrases filtered by content hash
+        const { data: phrases, error } = await supabase
+            .from("phrases")
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("content_hash", contentHash)
+            .order("added_at", { ascending: false });
+
+        if (error) {
+            console.error("Failed to load phrases by content hash:", error);
+            // Fallback to cache
+            return await cache.getPhrasesByContentHash(user.id, contentHash);
+        }
+
+        // Transform Supabase data to proper format
+        const transformedPhrases = (phrases || []).map((phrase: any) => ({
+            id: phrase.id,
+            lang: phrase.lang,
+            text: phrase.text,
+            translation: phrase.translation,
+            context: phrase.context,
+            tags: phrase.tags || [],
+            addedAt: phrase.added_at,
+            sourceFile: phrase.source_file,
+            contentHash: phrase.content_hash,
+            lineNo: phrase.line_no,
+            colOffset: phrase.col_offset,
+            updatedAt: phrase.updated_at,
+        }));
+
+        // Update cache with fresh data
+        await cache.setPhrasesByContentHash(user.id, contentHash, transformedPhrases);
+
+        return transformedPhrases;
+    } catch (error) {
+        console.error("Failed to load phrases by content hash:", error);
         throw error;
     }
 }
@@ -124,47 +328,91 @@ export async function loadAllPhrases(): Promise<SavedPhrase[]> {
  */
 export async function savePhrase(p: Omit<SavedPhrase, "id" | "addedAt">): Promise<SavedPhrase> {
     try {
-        const db = await ensureDb();
+        await ensureDb();
+
+        // Get current user with better error handling
+        const {
+            data: { user },
+            error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+            console.error("❌ Authentication error:", userError);
+            throw new Error(`Authentication failed: ${userError.message}`);
+        }
+
+        if (!user) {
+            console.error("❌ No authenticated user found");
+            throw new Error("User not authenticated. Please sign in again.");
+        }
+
         const saved: SavedPhrase = {
             id: crypto.randomUUID(),
             addedAt: new Date().toISOString(),
             ...p,
         };
 
-        // Generate stemmed versions for FTS
-        const stemmed = generateStemmedPhrase({
+        // Generate stemmed versions for FTS (currently unused but kept for future use)
+        generateStemmedPhrase({
             text: saved.text,
             translation: saved.translation,
             context: saved.context,
             lang: saved.lang,
         });
 
-        await db.execute(
-            `INSERT INTO phrases (id, lang, text, translation, context, tags_json, added_at, source_file, content_hash, line_no, col_offset, text_stemmed, translation_stemmed, context_stemmed)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                saved.id,
-                saved.lang,
-                saved.text,
-                saved.translation || null,
-                saved.context || null,
-                JSON.stringify(saved.tags || []),
-                saved.addedAt,
-                saved.sourceFile || null,
-                saved.contentHash || null,
-                saved.lineNo ?? null,
-                saved.colOffset ?? null,
-                stemmed.textStemmed,
-                stemmed.translationStemmed,
-                stemmed.contextStemmed,
-            ],
-        );
+        console.log("💾 Saving phrase to Supabase:", {
+            id: saved.id,
+            text: saved.text,
+            sourceFile: saved.sourceFile,
+            contentHash: saved.contentHash,
+            user_id: user.id,
+        });
+
+        // Debug: Check if sourceFile and contentHash are valid
+        if (!saved.sourceFile) {
+            console.warn("⚠️ Warning: sourceFile is null/undefined when saving phrase");
+        }
+        if (!saved.contentHash) {
+            console.warn("⚠️ Warning: contentHash is null/undefined when saving phrase");
+        }
+
+        // Try to save to Supabase
+        const { error } = await supabase
+            .from("phrases")
+            .insert({
+                id: saved.id,
+                user_id: user.id,
+                lang: saved.lang,
+                text: saved.text,
+                translation: saved.translation || "",
+                context: saved.context || "",
+                tags: saved.tags,
+                added_at: saved.addedAt,
+                source_file: saved.sourceFile || "",
+                content_hash: saved.contentHash || "",
+                line_no: saved.lineNo || 0,
+                col_offset: saved.colOffset || 0,
+                updated_at: new Date().toISOString(),
+            })
+            .select("*")
+            .single();
+
+        if (error) {
+            console.error("Failed to save phrase to Supabase:", error);
+            // Queue for later sync if offline
+            await cache.queueOperation("insert", saved);
+        } else {
+            // Update cache with the saved phrase
+            await cache.savePhrase(saved);
+        }
 
         // Notify UI listeners
         try {
+            console.log("📢 Dispatching PHRASES_UPDATED_EVENT");
             window.dispatchEvent(new CustomEvent(PHRASES_UPDATED_EVENT));
-        } catch {
-            // Ignore dispatch errors in non-browser contexts
+            console.log("✅ PHRASES_UPDATED_EVENT dispatched successfully");
+        } catch (_error) {
+            console.error("❌ Failed to dispatch PHRASES_UPDATED_EVENT:", _error);
         }
         return saved;
     } catch (error) {
@@ -178,8 +426,31 @@ export async function savePhrase(p: Omit<SavedPhrase, "id" | "addedAt">): Promis
  */
 export async function removePhrase(phraseId: string): Promise<void> {
     try {
-        const db = await ensureDb();
-        await db.delete("DELETE FROM phrases WHERE id = ?", [phraseId]);
+        await ensureDb();
+
+        // Get current user
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
+
+        // Try to delete from Supabase
+        const { error } = await supabase
+            .from("phrases")
+            .delete()
+            .eq("id", phraseId)
+            .eq("user_id", user.id);
+
+        if (error) {
+            console.error("Failed to remove phrase from Supabase:", error);
+            // Queue for later sync if offline
+            await cache.queueOperation("delete", { id: phraseId });
+        } else {
+            // Remove from cache
+            await cache.deletePhrase(phraseId);
+        }
 
         // Notify UI listeners
         try {
@@ -218,6 +489,126 @@ export interface SearchResults {
 }
 
 /**
+ * Advanced multilingual search with multiple strategies
+ * Supports: English, Spanish, French, German, Italian, Portuguese, Russian, Chinese, Japanese, Arabic
+ */
+export async function searchPhrasesAdvanced(
+    searchText: string,
+    options: {
+        language?: string;
+        searchFields?: ("text" | "translation" | "context")[];
+        fuzzyMatch?: boolean;
+        exactMatch?: boolean;
+        caseSensitive?: boolean;
+    } = {},
+): Promise<SavedPhrase[]> {
+    const {
+        language = "auto",
+        searchFields = ["text", "translation", "context"],
+        fuzzyMatch = true,
+        exactMatch = false,
+        caseSensitive = false,
+    } = options;
+
+    try {
+        await ensureDb();
+
+        // Get current user
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
+
+        let query = supabase.from("phrases").select("*").eq("user_id", user.id);
+
+        if (searchText.trim()) {
+            const searchTerm = searchText.trim();
+
+            // Language-specific search strategies
+            const searchStrategies = [];
+
+            // Strategy 1: Exact match (highest priority)
+            if (exactMatch) {
+                searchStrategies.push(...searchFields.map((field) => `${field}.eq.${searchTerm}`));
+            }
+
+            // Strategy 2: Full-text search with language-specific configs
+            if (language !== "auto") {
+                const languageConfigs = {
+                    en: "english",
+                    es: "spanish",
+                    fr: "french",
+                    de: "german",
+                    it: "italian",
+                    pt: "portuguese",
+                    ru: "russian",
+                    zh: "chinese_simple",
+                    ja: "japanese",
+                    ar: "arabic",
+                };
+
+                const config =
+                    languageConfigs[language as keyof typeof languageConfigs] || "simple";
+
+                searchStrategies.push(
+                    ...searchFields.map((field) => `textSearch(${field},${searchTerm},${config})`),
+                );
+            }
+
+            // Strategy 3: Fuzzy matching with similarity
+            if (fuzzyMatch) {
+                searchStrategies.push(
+                    ...searchFields.map((field) => `similarity(${field},${searchTerm}) > 0.3`),
+                );
+            }
+
+            // Strategy 4: Case-insensitive partial matching
+            if (!caseSensitive) {
+                searchStrategies.push(
+                    ...searchFields.map((field) => `${field}.ilike.%${searchTerm}%`),
+                );
+            } else {
+                searchStrategies.push(
+                    ...searchFields.map((field) => `${field}.like.%${searchTerm}%`),
+                );
+            }
+
+            // Combine all strategies with OR
+            if (searchStrategies.length > 0) {
+                query = query.or(searchStrategies.join(","));
+            }
+        }
+
+        const { data, error } = await query.order("added_at", { ascending: false });
+
+        if (error) {
+            console.error("Search error:", error);
+            throw error;
+        }
+
+        return (data || []).map((phrase: any) => ({
+            id: phrase.id,
+            lang: phrase.lang,
+            text: phrase.text,
+            translation: phrase.translation,
+            context: phrase.context,
+            tags: phrase.tags || [],
+            addedAt: phrase.added_at,
+            sourceFile: phrase.source_file,
+            contentHash: phrase.content_hash,
+            lineNo: phrase.line_no,
+            colOffset: phrase.col_offset,
+            updatedAt: phrase.updated_at,
+        }));
+    } catch (error) {
+        console.error("Advanced search failed:", error);
+        throw error;
+    }
+}
+
+/**
  * Search phrases using FTS with advanced filtering
  */
 export async function searchPhrases(options: SearchOptions = {}): Promise<SearchResults> {
@@ -231,131 +622,173 @@ export async function searchPhrases(options: SearchOptions = {}): Promise<Search
     } = options;
 
     try {
-        const db = await ensureDb();
+        await ensureDb();
 
-        // Build the WHERE clause based on search criteria
-        const whereConditions: string[] = [];
-        const queryParams: (string | number)[] = [];
-        let paramIndex = 1;
+        // Get current user
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
 
-        // Use FTS5 MATCH for real full-text search if a query is present (Tauri only)
-        // For browser, use LIKE queries on the search table
-        let useFts = false;
-        const isTauri = typeof window !== "undefined" && (window as any).__TAURI__;
+        // Build Supabase query
+        let query = supabase.from("phrases").select("*", { count: "exact" }).eq("user_id", user.id);
 
+        // Apply advanced search filter with multiple strategies
         if (searchText.trim()) {
-            if (isTauri) {
-                // Generate stemmed search terms for better matching
-                const stemmedTerms = generateStemmedSearchTerms(searchText, "en");
-                const stemmedQuery = stemmedTerms.map((t) => `"${t}"`).join(" ");
-                const originalQuery = searchText
-                    .split(/\s+/)
-                    .map((t) => `"${t}"`)
-                    .join(" ");
+            const searchTerm = searchText.trim();
 
-                // Combine original and stemmed search for comprehensive results
-                const combinedQuery = `${originalQuery} OR ${stemmedQuery}`;
-                whereConditions.push(`phrases_fts MATCH ?${paramIndex}`);
-                queryParams.push(combinedQuery);
-                paramIndex++;
-                useFts = true;
-            } else {
-                // Browser mode: use stemmed search with LIKE queries
-                const searchTerms = searchText.split(/\s+/);
-                const stemmedTerms = generateStemmedSearchTerms(searchText, "en");
+            // Strategy 1: Full-text search using PostgreSQL's built-in FTS with dynamic language detection
+            // This provides better multilingual support and handles proper stemming for each language
 
-                // Create conditions for both original and stemmed terms
-                const likeConditions = searchTerms.map(
-                    () =>
-                        `(ps.text LIKE ?${paramIndex++} OR ps.translation LIKE ?${paramIndex++} OR ps.context LIKE ?${paramIndex++} OR ps.text_stemmed LIKE ?${paramIndex++})`,
+            // Get all supported languages from the user's phrases to determine which FTS configs to use
+            const { data: userPhrases } = await supabase
+                .from("phrases")
+                .select("lang")
+                .eq("user_id", user.id)
+                .limit(1000); // Get a sample to determine languages
+
+            const supportedLanguages = [...new Set((userPhrases || []).map((p) => p.lang))];
+
+            // Create FTS queries for each supported language
+            const ftsQueries = [];
+
+            for (const lang of supportedLanguages) {
+                const config = getLanguageConfig(lang);
+
+                // FTS query for text field
+                ftsQueries.push(
+                    supabase
+                        .from("phrases")
+                        .select("*", { count: "exact" })
+                        .eq("user_id", user.id)
+                        .eq("lang", lang)
+                        .textSearch("text", searchTerm, {
+                            type: "websearch",
+                            config: config,
+                        }),
                 );
 
-                const stemmedConditions = stemmedTerms.map(
-                    () =>
-                        `(ps.text_stemmed LIKE ?${paramIndex++} OR ps.translation_stemmed LIKE ?${paramIndex++} OR ps.context_stemmed LIKE ?${paramIndex++})`,
+                // FTS query for translation field
+                ftsQueries.push(
+                    supabase
+                        .from("phrases")
+                        .select("*", { count: "exact" })
+                        .eq("user_id", user.id)
+                        .eq("lang", lang)
+                        .textSearch("translation", searchTerm, {
+                            type: "websearch",
+                            config: config,
+                        }),
                 );
 
-                whereConditions.push(
-                    `(${likeConditions.join(" AND ")} OR ${stemmedConditions.join(" AND ")})`,
+                // FTS query for context field
+                ftsQueries.push(
+                    supabase
+                        .from("phrases")
+                        .select("*", { count: "exact" })
+                        .eq("user_id", user.id)
+                        .eq("lang", lang)
+                        .textSearch("context", searchTerm, {
+                            type: "websearch",
+                            config: config,
+                        }),
+                );
+            }
+
+            // Strategy 2: ILIKE fallback for partial matches and non-FTS fields
+            const ilikeQuery = supabase
+                .from("phrases")
+                .select("*", { count: "exact" })
+                .eq("user_id", user.id)
+                .or(
+                    `text.ilike.%${searchTerm}%,translation.ilike.%${searchTerm}%,context.ilike.%${searchTerm}%`,
                 );
 
-                // Add parameters for original terms
-                searchTerms.forEach((term) => {
-                    const pattern = `%${term}%`;
-                    queryParams.push(pattern, pattern, pattern, pattern);
-                });
+            // Strategy 3: Combined approach - try all FTS queries, then supplement with ILIKE
+            try {
+                // Execute all FTS queries and ILIKE query in parallel
+                const allQueries = [...ftsQueries, ilikeQuery];
+                const results = await Promise.all(allQueries);
 
-                // Add parameters for stemmed terms
-                stemmedTerms.forEach((term) => {
-                    const pattern = `%${term}%`;
-                    queryParams.push(pattern, pattern, pattern);
-                });
+                // Combine all FTS results (exclude ILIKE result)
+                const ftsResults = results.slice(0, -1).flatMap((result) => result.data || []);
+
+                // Remove duplicates based on id
+                const uniqueFtsResults = ftsResults.filter(
+                    (phrase, index, self) => index === self.findIndex((p) => p.id === phrase.id),
+                );
+
+                const ilikeResult = results[results.length - 1];
+
+                if (uniqueFtsResults.length > 0) {
+                    // Use FTS results if available
+                    query = supabase
+                        .from("phrases")
+                        .select("*", { count: "exact" })
+                        .eq("user_id", user.id)
+                        .in(
+                            "id",
+                            uniqueFtsResults.map((p) => p.id),
+                        );
+                } else if (!ilikeResult.error && ilikeResult.data && ilikeResult.data.length > 0) {
+                    // Fallback to ILIKE if FTS found nothing
+                    query = ilikeQuery;
+                } else {
+                    // Both failed, use ILIKE as final fallback
+                    query = ilikeQuery;
+                }
+            } catch (error) {
+                // If all queries fail, use ILIKE as final fallback
+                query = ilikeQuery;
             }
         }
 
         // Filter by source file if scope is "current"
-        if (scope === "current" && sourceFile) {
-            whereConditions.push(`p.source_file = ?${paramIndex}`);
-            queryParams.push(sourceFile);
-            paramIndex++;
+        if (scope === "current") {
+            if (sourceFile) {
+                query = query.eq("source_file", sourceFile);
+            } else {
+                // If no sourceFile is provided, filter for phrases with empty source_file
+                // This handles cases where phrases were saved without a filename
+                query = query.or("source_file.is.null,source_file.eq.");
+            }
         }
 
         // Filter by tags if any are selected
         if (selectedTags.length > 0) {
-            const tagConditions = selectedTags.map(() => `p.tags_json LIKE ?${paramIndex++}`);
-            whereConditions.push(`(${tagConditions.join(" OR ")})`);
-            selectedTags.forEach((tag) => queryParams.push(`%"${tag}"%`));
+            // For now, use simple array contains - more complex tag filtering would go here
+            selectedTags.forEach((tag) => {
+                query = query.contains("tags", [tag]);
+            });
         }
 
-        // Build the base query
-        let baseQuery = "FROM phrases p";
-        if (useFts) {
-            baseQuery = "FROM phrases_fts";
-        } else if (!isTauri && searchText.trim()) {
-            // Browser mode with search: join with search table
-            baseQuery = "FROM phrases p JOIN phrases_search ps ON p.id = ps.id";
-        }
-
-        const whereClause =
-            whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
-
-        // Get total count
-        const countQuery = `SELECT COUNT(*) as count ${baseQuery} ${whereClause}`;
-        const countResult = await db.select(countQuery, queryParams);
-        const totalCount = countResult[0]?.count || 0;
-
-        // Calculate pagination
-        const totalPages = Math.ceil(totalCount / itemsPerPage);
+        // Apply pagination
         const offset = (page - 1) * itemsPerPage;
+        query = query
+            .order("added_at", { ascending: false })
+            .range(offset, offset + itemsPerPage - 1);
 
-        // Get paginated results
-        const selectQuery = `
-            SELECT p.id, p.lang, p.text, p.translation, p.context, p.tags_json, p.added_at, p.source_file, p.content_hash, p.line_no, p.col_offset
-            ${baseQuery}
-            ${whereClause}
-            ORDER BY ${useFts ? "rank" : "p.added_at DESC"}
-            LIMIT ?${paramIndex} OFFSET ?${paramIndex + 1}
-        `;
-        queryParams.push(itemsPerPage, offset);
+        const { data: phrases, error, count } = await query;
 
-        const rows = await db.select(selectQuery, queryParams);
+        if (error) {
+            console.error("Failed to search phrases:", error);
+            return {
+                phrases: [],
+                totalCount: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNextPage: false,
+                hasPreviousPage: false,
+            };
+        }
 
-        const phrases = rows.map((r: any) => ({
-            id: r.id,
-            lang: r.lang,
-            text: r.text,
-            translation: r.translation ?? "",
-            context: r.context ?? "",
-            tags: r.tags_json ? JSON.parse(r.tags_json) : [],
-            addedAt: r.added_at,
-            sourceFile: r.source_file ?? undefined,
-            contentHash: r.content_hash ?? undefined,
-            lineNo: r.line_no ?? undefined,
-            colOffset: r.col_offset ?? undefined,
-        }));
+        const totalCount = count || 0;
+        const totalPages = Math.ceil(totalCount / itemsPerPage);
 
         return {
-            phrases,
+            phrases: phrases || [],
             totalCount,
             currentPage: page,
             totalPages,
@@ -364,7 +797,6 @@ export async function searchPhrases(options: SearchOptions = {}): Promise<Search
         };
     } catch (error) {
         console.error("Failed to search phrases:", error);
-        // Return empty results on error
         return {
             phrases: [],
             totalCount: 0,
@@ -381,18 +813,31 @@ export async function searchPhrases(options: SearchOptions = {}): Promise<Search
  */
 export async function getAllTags(): Promise<string[]> {
     try {
-        const db = await ensureDb();
-        const rows = await db.select(
-            "SELECT tags_json FROM phrases WHERE tags_json IS NOT NULL AND tags_json != ''",
-        );
+        await ensureDb();
+
+        // Get current user
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
+
+        const { data: phrases, error } = await supabase
+            .from("phrases")
+            .select("tags")
+            .eq("user_id", user.id)
+            .not("tags", "is", null);
+
+        if (error) {
+            console.error("Failed to get tags:", error);
+            return [];
+        }
 
         const allTags = new Set<string>();
-        rows.forEach((row: any) => {
-            try {
-                const tags = JSON.parse(row.tags_json) as string[];
-                tags.forEach((tag) => allTags.add(tag));
-            } catch {
-                // Ignore invalid JSON
+        phrases?.forEach((phrase) => {
+            if (phrase.tags && Array.isArray(phrase.tags)) {
+                phrase.tags.forEach((tag: string) => allTags.add(tag));
             }
         });
 
@@ -408,20 +853,33 @@ export async function getAllTags(): Promise<string[]> {
  */
 export async function getTagCounts(): Promise<Map<string, number>> {
     try {
-        const db = await ensureDb();
-        const rows = await db.select(
-            "SELECT tags_json FROM phrases WHERE tags_json IS NOT NULL AND tags_json != ''",
-        );
+        await ensureDb();
+
+        // Get current user
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
+
+        const { data: phrases, error } = await supabase
+            .from("phrases")
+            .select("tags")
+            .eq("user_id", user.id)
+            .not("tags", "is", null);
+
+        if (error) {
+            console.error("Failed to get tag counts:", error);
+            return new Map();
+        }
 
         const tagCounts = new Map<string, number>();
-        rows.forEach((row: any) => {
-            try {
-                const tags = JSON.parse(row.tags_json) as string[];
-                tags.forEach((tag) => {
+        phrases?.forEach((phrase) => {
+            if (phrase.tags && Array.isArray(phrase.tags)) {
+                phrase.tags.forEach((tag: string) => {
                     tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
                 });
-            } catch {
-                // Ignore invalid JSON
             }
         });
 
@@ -432,152 +890,6 @@ export async function getTagCounts(): Promise<Map<string, number>> {
     }
 }
 
-/**
- * Migrate existing phrases to include stemmed data
- */
-export async function migrateExistingPhrasesToStemmed(): Promise<void> {
-    try {
-        const db = await ensureDb();
+// Migration functions removed - no longer needed with Supabase
 
-        // Find phrases that don't have stemmed data yet
-        const phrasesToMigrate = await db.select(
-            "SELECT id, lang, text, translation, context FROM phrases WHERE text_stemmed IS NULL OR text_stemmed = ''",
-        );
-
-        for (const phrase of phrasesToMigrate) {
-            try {
-                const stemmed = generateStemmedPhrase({
-                    text: phrase.text,
-                    translation: phrase.translation,
-                    context: phrase.context,
-                    lang: phrase.lang,
-                });
-
-                await db.execute(
-                    "UPDATE phrases SET text_stemmed = ?, translation_stemmed = ?, context_stemmed = ? WHERE id = ?",
-                    [
-                        stemmed.textStemmed,
-                        stemmed.translationStemmed,
-                        stemmed.contextStemmed,
-                        phrase.id,
-                    ],
-                );
-            } catch (error) {
-                console.error(`Failed to migrate phrase ${phrase.id}:`, error);
-            }
-        }
-
-        // Rebuild FTS index to include stemmed data
-        try {
-            await db.execute(`INSERT INTO phrases_fts(phrases_fts) VALUES('rebuild')`);
-            console.log("FTS index rebuilt with stemmed data");
-        } catch (error) {
-            console.error("Failed to rebuild FTS index:", error);
-        }
-
-        console.log(`Migration completed for ${phrasesToMigrate.length} phrases`);
-    } catch (error) {
-        console.error("Failed to migrate existing phrases to stemmed format:", error);
-    }
-}
-
-/**
- * Clear all data from the database (for testing)
- */
-export async function clearAllData(): Promise<void> {
-    try {
-        const db = await ensureDb();
-        await db.execute("DELETE FROM phrases");
-        console.log("Database cleared");
-    } catch (error) {
-        console.error("Failed to clear database:", error);
-        throw error;
-    }
-}
-
-/**
- * Seed the database with sample data for development/testing
- */
-export async function seedSampleData(): Promise<void> {
-    try {
-        const db = await ensureDb();
-
-        // Check if we already have data
-        const existingCount = await db.select("SELECT COUNT(*) as count FROM phrases");
-        if (existingCount[0]?.count > 0) {
-            console.log("Database already has data, skipping seed");
-            return;
-        }
-
-        const samplePhrases = [
-            {
-                text: "perfect woman",
-                translation: "mujer perfecta",
-                context:
-                    "Mr. Morcheck awoke with a sour taste in his mouth and a laugh ringing in his ears.",
-                tags: ["character", "description"],
-                lang: "en",
-                sourceFile: "the-perfect-woman.txt",
-                contentHash: "abc123",
-                lineNo: 1,
-                colOffset: 0,
-            },
-            {
-                text: "sour taste",
-                translation: "sabor amargo",
-                context:
-                    "Mr. Morcheck awoke with a sour taste in his mouth and a laugh ringing in his ears.",
-                tags: ["sensation", "description"],
-                lang: "en",
-                sourceFile: "the-perfect-woman.txt",
-                contentHash: "abc123",
-                lineNo: 1,
-                colOffset: 25,
-            },
-            {
-                text: "laugh ringing",
-                translation: "risa resonando",
-                context:
-                    "Mr. Morcheck awoke with a sour taste in his mouth and a laugh ringing in his ears.",
-                tags: ["sound", "memory"],
-                lang: "en",
-                sourceFile: "the-perfect-woman.txt",
-                contentHash: "abc123",
-                lineNo: 1,
-                colOffset: 65,
-            },
-            {
-                text: "Triad Morgan party",
-                translation: "fiesta de Triad Morgan",
-                context:
-                    "It was George Owen-Clark's laugh the last thing he remembered from the Triad Morgan party.",
-                tags: ["event", "proper-noun"],
-                lang: "en",
-                sourceFile: "the-perfect-woman.txt",
-                contentHash: "abc123",
-                lineNo: 2,
-                colOffset: 0,
-            },
-            {
-                text: "George Owen-Clark",
-                translation: "George Owen-Clark",
-                context:
-                    "It was George Owen-Clark's laugh the last thing he remembered from the Triad Morgan party.",
-                tags: ["character", "proper-noun"],
-                lang: "en",
-                sourceFile: "the-perfect-woman.txt",
-                contentHash: "abc123",
-                lineNo: 2,
-                colOffset: 10,
-            },
-        ];
-
-        for (const phrase of samplePhrases) {
-            await savePhrase(phrase);
-        }
-
-        console.log(`Seeded database with ${samplePhrases.length} sample phrases`);
-    } catch (error) {
-        console.error("Failed to seed sample data:", error);
-    }
-}
+// Database management functions removed - no longer needed with Supabase

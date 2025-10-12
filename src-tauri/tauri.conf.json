@@ -21,6 +21,17 @@
             "csp": null
         }
     },
+    "plugins": {
+        "http": {
+            "all": true,
+            "request": true
+        },
+        "deep-link": {
+            "schemes": [
+                "readnlearn"
+            ]
+        }
+    },
     "bundle": {
         "active": true,
         "targets": [

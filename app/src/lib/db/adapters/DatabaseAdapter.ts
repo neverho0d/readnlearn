@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /**
  * Database Adapter Interface
  *
@@ -16,11 +17,11 @@ export interface DatabaseAdapter {
     isConnected(): boolean;
 
     // Basic CRUD operations
-    execute(sql: string, params?: any[]): Promise<void>;
-    select<T = any>(sql: string, params?: any[]): Promise<T[]>;
-    insert(sql: string, params?: any[]): Promise<{ lastInsertId?: string | number }>;
-    update(sql: string, params?: any[]): Promise<{ affectedRows: number }>;
-    delete(sql: string, params?: any[]): Promise<{ affectedRows: number }>;
+    execute(sql: string, params?: unknown[]): Promise<void>;
+    select<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
+    insert(sql: string, params?: unknown[]): Promise<{ lastInsertId?: string | number }>;
+    update(sql: string, params?: unknown[]): Promise<{ affectedRows: number }>;
+    delete(sql: string, params?: unknown[]): Promise<{ affectedRows: number }>;
 
     // Transaction support
     beginTransaction(): Promise<void>;

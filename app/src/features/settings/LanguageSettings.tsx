@@ -11,11 +11,16 @@ interface LanguageSettingsProps {
     isLoading?: boolean;
     // eslint-disable-next-line no-unused-vars
     onLoadFile?: (text: string, filename?: string) => void;
+    // eslint-disable-next-line no-unused-vars
+    onCloseFile?: () => void;
+    sourceFile?: string | null;
 }
 
 export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
     isLoading = false,
     onLoadFile,
+    onCloseFile,
+    sourceFile,
 }) => {
     const { settings, updateSettings, getLanguageName } = useSettings();
     const { t } = useI18n();
@@ -442,6 +447,39 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                             <polyline points="10,9 9,9 8,9" />
                         </svg>
                         {t.loadButton}
+                    </button>
+                )}
+                {sourceFile && onCloseFile && (
+                    <button
+                        onClick={onCloseFile}
+                        style={{
+                            backgroundColor: "transparent",
+                            color: "var(--topbar-text)",
+                            border: "1px solid #4a5568",
+                            borderRadius: "4px",
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                        }}
+                        title={`Close file: ${sourceFile}`}
+                    >
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                        Close
                     </button>
                 )}
 

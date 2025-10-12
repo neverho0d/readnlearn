@@ -22,6 +22,7 @@ interface DictionaryStatusBarProps {
     currentScope: "current" | "all";
     onScopeChange: (scope: "current" | "all") => void; // eslint-disable-line no-unused-vars
     hasCurrentFile: boolean;
+    sourceFile?: string | null;
 }
 
 export const DictionaryStatusBar: React.FC<DictionaryStatusBarProps> = ({
@@ -29,6 +30,7 @@ export const DictionaryStatusBar: React.FC<DictionaryStatusBarProps> = ({
     currentScope,
     onScopeChange,
     hasCurrentFile,
+    sourceFile,
 }) => {
     const formatRecordCount = (count: number): string => {
         if (count === 0) return "No phrases found";
@@ -38,7 +40,9 @@ export const DictionaryStatusBar: React.FC<DictionaryStatusBarProps> = ({
 
     const getScopeDescription = (): string => {
         if (currentScope === "current") {
-            return "Searching in current file only";
+            return hasCurrentFile && sourceFile
+                ? `Searching in current file: ${sourceFile}`
+                : "No file loaded - switch to Reading mode to load a file";
         }
         return "Searching in all files";
     };
@@ -79,87 +83,84 @@ export const DictionaryStatusBar: React.FC<DictionaryStatusBarProps> = ({
                 </span>
             </div>
 
-            {hasCurrentFile && (
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                }}
+            >
+                <span
+                    style={{
+                        color: "var(--text-light)",
+                        fontSize: "12px",
+                    }}
+                >
+                    Scope:
+                </span>
                 <div
                     style={{
                         display: "flex",
-                        alignItems: "center",
-                        gap: 8,
+                        background: "var(--bg)",
+                        borderRadius: 4,
+                        overflow: "hidden",
                     }}
                 >
-                    <span
+                    <button
+                        onClick={() => onScopeChange("current")}
                         style={{
-                            color: "var(--text-light)",
+                            padding: "4px 12px",
+                            background:
+                                currentScope === "current" ? "var(--primary)" : "transparent",
+                            color: currentScope === "current" ? "white" : "var(--text)",
+                            border: "none",
+                            boxShadow: "none",
+                            cursor: "pointer",
                             fontSize: "12px",
+                            fontWeight: currentScope === "current" ? "500" : "400",
+                            transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            if (currentScope !== "current") {
+                                e.currentTarget.style.background = "var(--bg-hover)";
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (currentScope !== "current") {
+                                e.currentTarget.style.background = "transparent";
+                            }
                         }}
                     >
-                        Scope:
-                    </span>
-                    <div
+                        Current file
+                    </button>
+                    <button
+                        onClick={() => onScopeChange("all")}
                         style={{
-                            display: "flex",
-                            background: "var(--bg)",
-                            borderRadius: 4,
-                            overflow: "hidden",
+                            padding: "4px 12px",
+                            background: currentScope === "all" ? "var(--primary)" : "transparent",
+                            color: currentScope === "all" ? "white" : "var(--text)",
+                            border: "none",
+                            boxShadow: "none",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: currentScope === "all" ? "500" : "400",
+                            transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            if (currentScope !== "all") {
+                                e.currentTarget.style.background = "var(--bg-hover)";
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (currentScope !== "all") {
+                                e.currentTarget.style.background = "transparent";
+                            }
                         }}
                     >
-                        <button
-                            onClick={() => onScopeChange("current")}
-                            style={{
-                                padding: "4px 12px",
-                                background:
-                                    currentScope === "current" ? "var(--primary)" : "transparent",
-                                color: currentScope === "current" ? "white" : "var(--text)",
-                                border: "none",
-                                boxShadow: "none",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                fontWeight: currentScope === "current" ? "500" : "400",
-                                transition: "all 0.2s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                                if (currentScope !== "current") {
-                                    e.currentTarget.style.background = "var(--bg-hover)";
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (currentScope !== "current") {
-                                    e.currentTarget.style.background = "transparent";
-                                }
-                            }}
-                        >
-                            Current file
-                        </button>
-                        <button
-                            onClick={() => onScopeChange("all")}
-                            style={{
-                                padding: "4px 12px",
-                                background:
-                                    currentScope === "all" ? "var(--primary)" : "transparent",
-                                color: currentScope === "all" ? "white" : "var(--text)",
-                                border: "none",
-                                boxShadow: "none",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                fontWeight: currentScope === "all" ? "500" : "400",
-                                transition: "all 0.2s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                                if (currentScope !== "all") {
-                                    e.currentTarget.style.background = "var(--bg-hover)";
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (currentScope !== "all") {
-                                    e.currentTarget.style.background = "transparent";
-                                }
-                            }}
-                        >
-                            All files
-                        </button>
-                    </div>
+                        All files
+                    </button>
                 </div>
-            )}
+            </div>
         </div>
     );
 };

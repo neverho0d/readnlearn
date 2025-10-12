@@ -29,6 +29,16 @@ body {
     background: var(--bg);
     color: var(--text);
 }
+
+/* Loading spinner animation */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 .logo.vite:hover {
     filter: drop-shadow(0 0 2em #747bff);
 }

@@ -6,6 +6,6 @@ declare const __TAURI_DEBUG__: string | undefined;
 
 // sql.js module declaration
 declare module "sql.js" {
-    const initSqlJs: any;
+    const initSqlJs: unknown;
     export default initSqlJs;
 }

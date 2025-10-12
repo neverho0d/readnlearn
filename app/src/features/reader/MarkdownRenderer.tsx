@@ -13,13 +13,31 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
         if (!target) return;
         const anchor = target.closest(".phrase-anchor") as HTMLElement | null;
         if (anchor) {
-            const sup = anchor.querySelector(".phrase-marker");
-            if (!sup) return;
-            const markerText = sup.textContent || ""; // first 4 chars of id
-            const event = new CustomEvent("readnlearn:jump-to-phrase", {
-                detail: { marker: markerText },
-            });
-            window.dispatchEvent(event);
+            // Get the phrase ID from the data attribute
+            const phraseId = anchor.getAttribute("data-phrase-id");
+            if (!phraseId) return;
+
+            // Find the marker (it should be in the last span of the multi-line phrase)
+            // Look for any span with this phrase ID that has a marker
+            const allAnchorsWithSameId = document.querySelectorAll(
+                `[data-phrase-id="${phraseId}"]`,
+            );
+            let markerText = "";
+
+            for (const span of allAnchorsWithSameId) {
+                const sup = span.querySelector(".phrase-marker");
+                if (sup) {
+                    markerText = sup.textContent || "";
+                    break;
+                }
+            }
+
+            if (markerText) {
+                const event = new CustomEvent("readnlearn:jump-to-phrase", {
+                    detail: { marker: markerText },
+                });
+                window.dispatchEvent(event);
+            }
         }
     };
     return (

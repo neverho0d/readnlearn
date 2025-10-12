@@ -87,6 +87,7 @@ export const DictionarySearchBar: React.FC<DictionarySearchBarProps> = ({
                     value={localSearchText}
                     onChange={handleInputChange}
                     placeholder={placeholder}
+                    data-testid="search-input"
                     style={{
                         width: "100%",
                         padding: "8px 36px 8px 32px", // room for icons on both sides

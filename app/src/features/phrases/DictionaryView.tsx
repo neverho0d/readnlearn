@@ -72,6 +72,10 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
             const { loadAllPhrases } = await import("../../lib/db/phraseStore");
 
             const phrases = await loadAllPhrases();
+            console.log("📚 DictionaryView loaded phrases:", phrases.length, "phrases");
+            if (phrases.length > 0) {
+                console.log("📝 Sample phrase data:", phrases[0]);
+            }
             setRows(phrases as unknown as PhraseRow[]);
 
             // Debug logging
@@ -134,17 +138,6 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
 
     // Filter phrases that are present in the current text
     const filteredRows = React.useMemo(() => {
-        // Debug logging
-        // if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development") {
-        //     console.log("DictionaryView filtering:", {
-        //         filterTextLength: filterText.length,
-        //         filterTextPreview: filterText.substring(0, 100),
-        //         showAllPhrases,
-        //         totalRows: rows.length,
-        //         mode: "filtering",
-        //     });
-        // }
-
         // If no text is loaded:
         // - In normal/dictionary contexts show all phrases (tests rely on this behavior)
         // - In reader pane (forced) show empty
@@ -160,9 +153,6 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                 // If followText is enabled, only show phrases that are currently visible
                 if (followText) {
                     const isVisible = visiblePhrases.has(row.id);
-                    console.log(
-                        `🔍 Phrase ${row.id} (${row.text.substring(0, 30)}...): visible=${isVisible}`,
-                    );
                     return isVisible;
                 }
 
@@ -181,30 +171,15 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                     .every((word) => normalizedText.includes(word));
 
                 const matches = exactMatch || wordMatch;
-
-                // Debug logging for each phrase
-                // if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development") {
-                //     console.log("Phrase filtering:", {
-                //         phrase: row.text,
-                //         normalizedPhrase,
-                //         normalizedText: normalizedText.substring(0, 100),
-                //         textLength: filterText.length,
-                //         exactMatch,
-                //         wordMatch,
-                //         matches,
-                //         showAllPhrases,
-                //     });
-                // }
-
                 return matches;
             });
 
             // Sort phrases by position
             filtered.sort((a, b) => {
-                const aLine = (a as unknown as { line_no?: number }).line_no;
-                const aCol = (a as unknown as { col_offset?: number }).col_offset;
-                const bLine = (b as unknown as { line_no?: number }).line_no;
-                const bCol = (b as unknown as { col_offset?: number }).col_offset;
+                const aLine = (a as unknown as { lineNo?: number }).lineNo;
+                const aCol = (a as unknown as { colOffset?: number }).colOffset;
+                const bLine = (b as unknown as { lineNo?: number }).lineNo;
+                const bCol = (b as unknown as { colOffset?: number }).colOffset;
 
                 // Use line_no * 100000 + col_offset for sorting (as requested)
                 if (
@@ -510,6 +485,8 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                             {r.source_file ||
                                                 (r as unknown as { sourceFile?: string })
                                                     .sourceFile ||
+                                                (r as unknown as { source_file?: string })
+                                                    .source_file ||
                                                 "Unknown source"}
                                         </span>
                                     </div>
