@@ -13,9 +13,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "mock-anon-key
 // Only throw error in development, not in test environments
 if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
     if (import.meta.env.MODE !== "test" && import.meta.env.MODE !== "production") {
-        console.warn(
-            "Missing Supabase environment variables. Using mock values for testing.",
-        );
+        console.warn("Missing Supabase environment variables. Using mock values for testing.");
     }
 }
 
