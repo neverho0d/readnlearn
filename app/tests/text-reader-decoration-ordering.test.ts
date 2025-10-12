@@ -3,6 +3,7 @@ import { render } from "@testing-library/react";
 import React from "react";
 
 // Mock the TextReader decoration logic
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MockTextReaderDecoration = ({ phrases, text }: { phrases: any[]; text: string }) => {
     // Simulate the sorting logic from TextReader.tsx (descending for decoration)
     const sortedPhrases = [...phrases].sort(

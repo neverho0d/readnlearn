@@ -146,6 +146,7 @@ describe("FTS Database Schema and Configuration", () => {
                             col_offset: 0,
                             updated_at: "2023-01-01T00:00:00Z",
                         },
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ] as any,
                     error: null,
                     count: 1,
@@ -182,6 +183,7 @@ describe("FTS Database Schema and Configuration", () => {
                 },
             };
 
+            // eslint-disable-next-line no-unused-vars
             Object.entries(stemmingExamples).forEach(([_lang, example]) => {
                 expect(example.expected).toContain(example.input);
             });
@@ -215,6 +217,7 @@ describe("FTS Database Schema and Configuration", () => {
                             col_offset: 0,
                             updated_at: "2023-01-01T00:00:00Z",
                         },
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ] as any,
                     error: null,
                     count: 1,
@@ -393,6 +396,7 @@ describe("FTS Database Schema and Configuration", () => {
             mockSupabase.auth.getUser.mockReturnValue({
                 data: { user: null },
                 error: null,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
 
             const { searchPhrases } = await import("./phraseStore");
@@ -421,6 +425,7 @@ describe("FTS Database Schema and Configuration", () => {
                 .order()
                 .range.mockReturnValue({
                     data: [] as never[],
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     error: { message: "Connection failed" } as any,
                     count: 0,
                 });

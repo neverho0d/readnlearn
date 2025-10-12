@@ -99,6 +99,7 @@ export async function ensureDb(): Promise<boolean> {
         // In test environments, skip database initialization
         if (
             typeof window === "undefined" ||
+            // eslint-disable-next-line no-undef
             (typeof process !== "undefined" && process?.env?.NODE_ENV === "test") ||
             import.meta.env.MODE === "test"
         ) {
@@ -178,6 +179,7 @@ export async function loadAllPhrases(): Promise<SavedPhrase[]> {
         }
 
         // Transform Supabase data to proper format
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const transformedPhrases = (phrases || []).map((phrase: any) => ({
             id: phrase.id,
             lang: phrase.lang,
@@ -242,6 +244,7 @@ export async function loadPhrasesBySource(sourceFile: string): Promise<SavedPhra
         }
 
         // Transform Supabase data to proper format
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const transformedPhrases = (phrases || []).map((phrase: any) => ({
             id: phrase.id,
             lang: phrase.lang,
@@ -298,6 +301,7 @@ export async function loadPhrasesByContentHash(contentHash: string): Promise<Sav
         }
 
         // Transform Supabase data to proper format
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const transformedPhrases = (phrases || []).map((phrase: any) => ({
             id: phrase.id,
             lang: phrase.lang,
@@ -588,6 +592,7 @@ export async function searchPhrasesAdvanced(
             throw error;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (data || []).map((phrase: any) => ({
             id: phrase.id,
             lang: phrase.lang,

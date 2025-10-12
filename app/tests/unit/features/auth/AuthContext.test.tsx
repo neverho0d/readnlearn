@@ -176,6 +176,7 @@ describe("AuthContext", () => {
         const { supabase } = await import("../../../../src/lib/supabase/client");
         vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValue({
             data: {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 provider: "github" as any,
                 url: "github.com",
             },

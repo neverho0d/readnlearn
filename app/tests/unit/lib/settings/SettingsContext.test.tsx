@@ -164,7 +164,8 @@ describe("SettingsContext", () => {
                         error: null,
                     }),
                 ),
-            });
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any);
 
             mockLocalStorage.getItem.mockReturnValue(JSON.stringify(storedSettings));
 
@@ -451,7 +452,8 @@ describe("SettingsContext", () => {
                         error: null,
                     }),
                 ),
-            });
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any);
 
             const partialSettings = { l1: "fr", fontSize: 20 };
             mockLocalStorage.getItem.mockReturnValue(JSON.stringify(partialSettings));
@@ -488,7 +490,8 @@ describe("SettingsContext", () => {
                         error: null,
                     }),
                 ),
-            });
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any);
 
             const settingsWithExtra = {
                 l1: "fr",

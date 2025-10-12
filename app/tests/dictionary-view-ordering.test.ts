@@ -3,12 +3,17 @@ import { render, screen } from "@testing-library/react";
 import React from "react";
 
 // Mock the DictionaryView component
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MockDictionaryView = ({ phrases }: { phrases: any[] }) => {
     // Simulate the sorting logic from DictionaryView.tsx
     const sortedPhrases = [...phrases].sort((a, b) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const aLine = (a as any).lineNo || 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const aCol = (a as any).colOffset || 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bLine = (b as any).lineNo || 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bCol = (b as any).colOffset || 0;
 
         const aPosition = aLine * 100000 + aCol;

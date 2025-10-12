@@ -217,6 +217,7 @@ export class IndexedDBCache {
     async handleRealtimeUpdate(payload: unknown): Promise<void> {
         if (!this.db) await this.init();
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const payloadData = payload as { eventType: string; new: any; old: any };
         const { eventType, new: newRecord, old: oldRecord } = payloadData;
 

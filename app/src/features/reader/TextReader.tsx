@@ -191,6 +191,7 @@ interface TextReaderProps {
     sourceFile?: string;
     savedPhrases?: Array<{ id: string; text: string; position: number; formulaPosition?: number }>;
     followText?: boolean;
+    // eslint-disable-next-line no-unused-vars
     onVisiblePhrasesChange?: (_visiblePhrases: Set<string>) => void;
 }
 

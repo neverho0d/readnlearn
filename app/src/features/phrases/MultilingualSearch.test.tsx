@@ -23,6 +23,7 @@ vi.mock("../../lib/db/phraseStore", () => ({
 }));
 
 vi.mock("./DictionarySearchBar", () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionarySearchBar: ({ onSearchChange, onScopeChange }: any) => (
         <div data-testid="search-bar">
             <input
@@ -38,6 +39,7 @@ vi.mock("./DictionarySearchBar", () => ({
 }));
 
 vi.mock("./DictionaryTagsBar", () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryTagsBar: ({ tags = [], selectedTags, onTagToggle }: any) => (
         <div data-testid="tags-bar">
             {tags.map((tag: string) => (
@@ -55,6 +57,7 @@ vi.mock("./DictionaryTagsBar", () => ({
 }));
 
 vi.mock("./DictionaryStatusBar", () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryStatusBar: ({ totalCount, currentPage, totalPages }: any) => (
         <div data-testid="status-bar">
             {totalCount} phrases found | Page {currentPage} of {totalPages}
@@ -63,6 +66,7 @@ vi.mock("./DictionaryStatusBar", () => ({
 }));
 
 vi.mock("./DictionaryPager", () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryPager: ({ currentPage, totalPages, onPageChange }: any) => (
         <div data-testid="pager">
             <button

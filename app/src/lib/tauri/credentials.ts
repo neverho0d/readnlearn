@@ -9,8 +9,10 @@
 async function getTauriInvoke() {
     try {
         // Check if we're in a Tauri environment
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (typeof window !== "undefined" && (window as any).__TAURI__) {
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const module = await import("@tauri-apps/api/tauri" as any);
                 return module.invoke;
             } catch {

@@ -1,3 +1,5 @@
+import { vi } from "vitest";
+
 // Mock for phraseStore to prevent database initialization
 export const ensureDb = vi.fn().mockResolvedValue(undefined);
 
