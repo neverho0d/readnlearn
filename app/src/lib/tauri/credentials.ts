@@ -5,7 +5,24 @@
  * This is used for storing Supabase session tokens securely.
  */
 
-import { invoke } from "@tauri-apps/api/tauri";
+// Dynamic import for Tauri API
+async function getTauriInvoke() {
+    try {
+        // Check if we're in a Tauri environment
+        if (typeof window !== "undefined" && (window as any).__TAURI__) {
+            try {
+                const module = await import("@tauri-apps/api/tauri" as any);
+                return module.invoke;
+            } catch {
+                // Tauri API not available
+                return null;
+            }
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
 
 export interface CredentialStorage {
     // eslint-disable-next-line no-unused-vars
@@ -18,6 +35,10 @@ export interface CredentialStorage {
 
 class TauriCredentialStorage implements CredentialStorage {
     async storeCredential(_service: string, _key: string, _value: string): Promise<void> {
+        const invoke = await getTauriInvoke();
+        if (!invoke) {
+            throw new Error("Tauri not available");
+        }
         try {
             await invoke("store_credential", { service: _service, key: _key, value: _value });
         } catch (error) {
@@ -27,8 +48,12 @@ class TauriCredentialStorage implements CredentialStorage {
     }
 
     async getCredential(_service: string, _key: string): Promise<string | null> {
+        const invoke = await getTauriInvoke();
+        if (!invoke) {
+            return null;
+        }
         try {
-            const result = await invoke<string | null>("get_credential", {
+            const result = await invoke("get_credential", {
                 service: _service,
                 key: _key,
             });
@@ -40,6 +65,10 @@ class TauriCredentialStorage implements CredentialStorage {
     }
 
     async deleteCredential(_service: string, _key: string): Promise<void> {
+        const invoke = await getTauriInvoke();
+        if (!invoke) {
+            throw new Error("Tauri not available");
+        }
         try {
             await invoke("delete_credential", { service: _service, key: _key });
         } catch (error) {

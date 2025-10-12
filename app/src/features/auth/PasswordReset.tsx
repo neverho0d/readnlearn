@@ -28,7 +28,7 @@ export const PasswordReset: React.FC<PasswordResetProps> = ({ onSwitchToLogin })
             const { error } = await resetPassword(email);
 
             if (error) {
-                setError(error.message);
+                setError((error as Error).message || "An error occurred");
             } else {
                 setSuccess(true);
             }

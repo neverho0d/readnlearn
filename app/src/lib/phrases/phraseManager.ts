@@ -28,7 +28,7 @@ export function calculatePhrasePosition(phrase: SavedPhrase, text: string): numb
     // 1) Use saved line/column position as primary method (most accurate)
     if (phrase.lineNo !== undefined && phrase.lineNo > 0) {
         // Use the line_no * 100000 + col_offset formula for consistent positioning
-        const calculatedPosition = (phrase.lineNo || 0) * 100000 + (phrase.colOffset || 0);
+        // const _calculatedPosition = (phrase.lineNo || 0) * 100000 + (phrase.colOffset || 0);
 
         // For actual text decoration, we still need to find the real position in the text
         // but we use the formula for ordering consistency

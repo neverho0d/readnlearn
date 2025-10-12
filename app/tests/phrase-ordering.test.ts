@@ -297,7 +297,7 @@ Line 4: Fourth phrase here.`;
                     content_hash: "test-hash", // snake_case
                     line_no: 1, // snake_case
                     col_offset: 0, // snake_case
-                    added_at: "2024-01-01T00:00:00Z",
+                    addedAt: "2024-01-01T00:00:00Z",
                     lang: "en",
                     context: "Test context",
                 },

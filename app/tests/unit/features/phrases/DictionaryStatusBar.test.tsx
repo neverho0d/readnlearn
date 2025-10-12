@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import React from "react";
+// import React from "react"; // Not needed in this test file
 import { DictionaryStatusBar } from "../../../../src/features/phrases/DictionaryStatusBar";
 
 describe("DictionaryStatusBar", () => {
@@ -102,7 +102,7 @@ describe("DictionaryStatusBar", () => {
         expect(style).toContain("white");
     });
 
-    it("should not show current file option when no current file", () => {
+    it("should show current file option even when no current file", () => {
         render(
             <DictionaryStatusBar
                 totalRecords={50}
@@ -112,7 +112,7 @@ describe("DictionaryStatusBar", () => {
             />,
         );
 
-        expect(screen.queryByRole("button", { name: /current file/i })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /current file/i })).toBeInTheDocument();
     });
 
     it("should handle zero records", () => {

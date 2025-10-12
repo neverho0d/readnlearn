@@ -114,7 +114,7 @@ function MainAppContent() {
     useEffect(() => {
         let uiReadyCount = 0;
         const expectedEvents = 2; // TextReader + DictionaryView
-        let startupTimeout: NodeJS.Timeout;
+        let startupTimeout: ReturnType<typeof setTimeout>;
 
         const handleUIReady = () => {
             uiReadyCount++;
@@ -537,7 +537,7 @@ function MainContent(props: {
     visiblePhrases: Set<string>;
     // eslint-disable-next-line no-unused-vars
     onFollowTextToggle: (enabled: boolean) => void;
-    // eslint-disable-next-line no-unused-vars
+
     setVisiblePhrases: React.Dispatch<React.SetStateAction<Set<string>>>;
     savedPhrases: Array<{ id: string; text: string; position: number; formulaPosition?: number }>;
     setSavedPhrases: React.Dispatch<

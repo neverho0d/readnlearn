@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { searchPhrases, searchPhrasesAdvanced, savePhrase, loadAllPhrases } from "./phraseStore";
-import { supabase } from "../supabase/client";
+import { searchPhrases, searchPhrasesAdvanced } from "./phraseStore";
+// import { supabase } from "../supabase/client"; // Not used in this test file
 
 // Mock the cache module to prevent IndexedDB initialization
 vi.mock("../cache/indexedDB", () => ({

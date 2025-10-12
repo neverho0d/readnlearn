@@ -91,17 +91,27 @@ describe("EnhancedDictionaryView", () => {
             id: "test-1",
             text: "Hello world",
             translation: "Hola mundo",
+            context: "Hello world, how are you?",
             tags: ["greeting"],
-            source_file: "test.txt",
-            added_at: "2023-01-01T00:00:00Z",
+            lang: "es",
+            addedAt: "2023-01-01T00:00:00Z",
+            sourceFile: "test.txt",
+            contentHash: "hash1",
+            lineNo: 1,
+            colOffset: 0,
         },
         {
             id: "test-2",
             text: "Good morning",
             translation: "Buenos días",
+            context: "Good morning, have a great day!",
             tags: ["greeting", "time"],
-            source_file: "test.txt",
-            added_at: "2023-01-02T00:00:00Z",
+            lang: "es",
+            addedAt: "2023-01-02T00:00:00Z",
+            sourceFile: "test.txt",
+            contentHash: "hash2",
+            lineNo: 2,
+            colOffset: 0,
         },
     ];
 
@@ -175,7 +185,7 @@ describe("EnhancedDictionaryView", () => {
         const phrasesWithoutSource = [
             {
                 ...mockPhrases[0],
-                source_file: undefined,
+                sourceFile: undefined,
             },
         ];
 

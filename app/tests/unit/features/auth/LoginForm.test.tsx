@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import React from "react";
+// import React from "react"; // Not needed in this test file
 import { LoginForm } from "../../../../src/features/auth/LoginForm";
 
 // Mock the auth context

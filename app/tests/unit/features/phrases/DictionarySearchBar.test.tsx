@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import React from "react";
+// import React from "react"; // Not needed in this test file
 import { DictionarySearchBar } from "../../../../src/features/phrases/DictionarySearchBar";
 
 describe("DictionarySearchBar", () => {

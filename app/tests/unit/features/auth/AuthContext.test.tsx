@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import React from "react";
+// import React from "react"; // Not needed in this test file
 import { AuthProvider, useAuth } from "../../../../src/lib/auth/AuthContext";
 
 // Mock Supabase client
@@ -56,7 +56,28 @@ describe("AuthContext", () => {
     it("should handle sign in", async () => {
         const { supabase } = await import("../../../../src/lib/supabase/client");
         vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
-            data: { user: { id: "123" }, session: { access_token: "token" } },
+            data: {
+                user: {
+                    id: "123",
+                    app_metadata: {},
+                    user_metadata: {},
+                    aud: "authenticated",
+                    created_at: "2023-01-01T00:00:00Z",
+                },
+                session: {
+                    access_token: "token",
+                    refresh_token: "refresh",
+                    expires_in: 3600,
+                    token_type: "bearer",
+                    user: {
+                        id: "123",
+                        app_metadata: {},
+                        user_metadata: {},
+                        aud: "authenticated",
+                        created_at: "2023-01-01T00:00:00Z",
+                    },
+                },
+            },
             error: null,
         });
 
@@ -80,7 +101,16 @@ describe("AuthContext", () => {
     it("should handle sign up", async () => {
         const { supabase } = await import("../../../../src/lib/supabase/client");
         vi.mocked(supabase.auth.signUp).mockResolvedValue({
-            data: { user: { id: "123" }, session: null },
+            data: {
+                user: {
+                    id: "123",
+                    app_metadata: {},
+                    user_metadata: {},
+                    aud: "authenticated",
+                    created_at: "2023-01-01T00:00:00Z",
+                },
+                session: null,
+            },
             error: null,
         });
 
@@ -121,7 +151,10 @@ describe("AuthContext", () => {
 
     it("should handle password reset", async () => {
         const { supabase } = await import("../../../../src/lib/supabase/client");
-        vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({ error: null });
+        vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({
+            data: {},
+            error: null,
+        });
 
         render(
             <AuthProvider>
@@ -142,7 +175,10 @@ describe("AuthContext", () => {
     it("should handle GitHub OAuth", async () => {
         const { supabase } = await import("../../../../src/lib/supabase/client");
         vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValue({
-            data: { url: "github.com" },
+            data: {
+                provider: "github" as any,
+                url: "github.com",
+            },
             error: null,
         });
 

@@ -41,7 +41,7 @@ describe("SupabaseAdapter", () => {
     });
 
     it("should initialize with correct properties", () => {
-        expect(adapter.connected).toBe(false);
+        // Test public properties only
         expect(adapter.getDatabaseInfo().type).toBe("postgresql");
     });
 

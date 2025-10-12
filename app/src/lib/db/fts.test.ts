@@ -21,7 +21,7 @@ const mockSupabase = {
                 })),
                 order: vi.fn(() => ({
                     range: vi.fn(() => ({
-                        data: [],
+                        data: [] as never[],
                         error: null,
                         count: 0,
                     })),
@@ -30,7 +30,7 @@ const mockSupabase = {
             or: vi.fn(() => ({
                 order: vi.fn(() => ({
                     range: vi.fn(() => ({
-                        data: [],
+                        data: [] as never[],
                         error: null,
                         count: 0,
                     })),
@@ -137,8 +137,16 @@ describe("FTS Database Schema and Configuration", () => {
                             translation: "El zorro marrón rápido",
                             lang: "en",
                             user_id: "test-user-id",
+                            context: "Test context",
+                            tags: ["test"],
+                            added_at: "2023-01-01T00:00:00Z",
+                            source_file: "test.txt",
+                            content_hash: "hash1",
+                            line_no: 1,
+                            col_offset: 0,
+                            updated_at: "2023-01-01T00:00:00Z",
                         },
-                    ],
+                    ] as any,
                     error: null,
                     count: 1,
                 });
@@ -174,7 +182,7 @@ describe("FTS Database Schema and Configuration", () => {
                 },
             };
 
-            Object.entries(stemmingExamples).forEach(([lang, example]) => {
+            Object.entries(stemmingExamples).forEach(([_lang, example]) => {
                 expect(example.expected).toContain(example.input);
             });
         });
@@ -198,8 +206,16 @@ describe("FTS Database Schema and Configuration", () => {
                             translation: "Large text translation",
                             lang: "en",
                             user_id: "test-user-id",
+                            context: "Test context",
+                            tags: ["test"],
+                            added_at: "2023-01-01T00:00:00Z",
+                            source_file: "test.txt",
+                            content_hash: "hash1",
+                            line_no: 1,
+                            col_offset: 0,
+                            updated_at: "2023-01-01T00:00:00Z",
                         },
-                    ],
+                    ] as any,
                     error: null,
                     count: 1,
                 });
@@ -376,7 +392,8 @@ describe("FTS Database Schema and Configuration", () => {
         it("should handle authentication errors gracefully", async () => {
             mockSupabase.auth.getUser.mockReturnValue({
                 data: { user: null },
-            });
+                error: null,
+            } as any);
 
             const { searchPhrases } = await import("./phraseStore");
 
@@ -403,8 +420,8 @@ describe("FTS Database Schema and Configuration", () => {
                 .or()
                 .order()
                 .range.mockReturnValue({
-                    data: null,
-                    error: { message: "Connection failed" },
+                    data: [] as never[],
+                    error: { message: "Connection failed" } as any,
                     count: 0,
                 });
 

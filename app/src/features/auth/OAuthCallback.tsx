@@ -30,7 +30,7 @@ export const OAuthCallback: React.FC = () => {
                     setError("Authentication failed");
                     setLoading(false);
                 }
-            } catch (_err) {
+            } catch {
                 setError("An unexpected error occurred");
                 setLoading(false);
             }

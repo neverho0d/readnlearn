@@ -99,7 +99,7 @@ export async function ensureDb(): Promise<boolean> {
         // In test environments, skip database initialization
         if (
             typeof window === "undefined" ||
-            process.env.NODE_ENV === "test" ||
+            (typeof process !== "undefined" && process?.env?.NODE_ENV === "test") ||
             import.meta.env.MODE === "test"
         ) {
             console.log("Skipping database initialization in test environment");
@@ -739,7 +739,7 @@ export async function searchPhrases(options: SearchOptions = {}): Promise<Search
                     // Both failed, use ILIKE as final fallback
                     query = ilikeQuery;
                 }
-            } catch (error) {
+            } catch {
                 // If all queries fail, use ILIKE as final fallback
                 query = ilikeQuery;
             }

@@ -29,7 +29,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSwitch
             const { error } = await signIn(email, password);
 
             if (error) {
-                setError(error.message);
+                setError((error as Error).message || "An error occurred");
             }
         } catch {
             setError("An unexpected error occurred");
@@ -45,7 +45,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSwitch
         try {
             const { error } = await signInWithGitHub();
             if (error) {
-                setError(error.message);
+                setError((error as Error).message || "An error occurred");
             }
         } catch {
             setError("An unexpected error occurred");

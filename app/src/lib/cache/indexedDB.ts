@@ -183,7 +183,7 @@ export class IndexedDBCache {
     }
 
     async setPhrasesBySource(
-        userId: string,
+        _userId: string,
         sourceFile: string,
         phrases: SavedPhrase[],
     ): Promise<void> {
@@ -194,12 +194,12 @@ export class IndexedDBCache {
 
         // Store phrases with source file metadata
         for (const phrase of phrases) {
-            await store.put({ ...phrase, user_id: userId, sourceFile });
+            await store.put({ ...phrase, sourceFile });
         }
     }
 
     async setPhrasesByContentHash(
-        userId: string,
+        _userId: string,
         contentHash: string,
         phrases: SavedPhrase[],
     ): Promise<void> {
@@ -210,14 +210,15 @@ export class IndexedDBCache {
 
         // Store phrases with content hash metadata
         for (const phrase of phrases) {
-            await store.put({ ...phrase, user_id: userId, contentHash });
+            await store.put({ ...phrase, contentHash });
         }
     }
 
     async handleRealtimeUpdate(payload: unknown): Promise<void> {
         if (!this.db) await this.init();
 
-        const { eventType, new: newRecord, old: oldRecord } = payload;
+        const payloadData = payload as { eventType: string; new: any; old: any };
+        const { eventType, new: newRecord, old: oldRecord } = payloadData;
 
         const tx = this.db!.transaction("phrases", "readwrite");
         const store = tx.objectStore("phrases");

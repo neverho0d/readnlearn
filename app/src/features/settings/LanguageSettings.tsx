@@ -11,7 +11,7 @@ interface LanguageSettingsProps {
     isLoading?: boolean;
     // eslint-disable-next-line no-unused-vars
     onLoadFile?: (text: string, filename?: string) => void;
-    // eslint-disable-next-line no-unused-vars
+
     onCloseFile?: () => void;
     sourceFile?: string | null;
 }

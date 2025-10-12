@@ -132,13 +132,13 @@ export class SyncService {
     private async executeOperation(operation: string, data: unknown): Promise<void> {
         switch (operation) {
             case "insert":
-                await this.syncInsert(data);
+                await this.syncInsert(data as SavedPhrase);
                 break;
             case "update":
-                await this.syncUpdate(data);
+                await this.syncUpdate(data as SavedPhrase);
                 break;
             case "delete":
-                await this.syncDelete(data);
+                await this.syncDelete(data as { id: string });
                 break;
             default:
                 console.warn(`Unknown operation: ${operation}`);

@@ -109,7 +109,19 @@ export class SupabaseAdapter implements DatabaseAdapter {
             // Try cache first if offline
             if (!this.online) {
                 const cachedResults = await cache.searchLocal(query, { limit, lang: language });
-                return cachedResults.map(this.mapToSearchResult);
+                return cachedResults.map((phrase) => ({
+                    id: phrase.id,
+                    text: phrase.text,
+                    translation: phrase.translation,
+                    context: phrase.context,
+                    tags: phrase.tags,
+                    lang: phrase.lang,
+                    addedAt: phrase.addedAt,
+                    sourceFile: phrase.sourceFile || "",
+                    contentHash: phrase.contentHash || "",
+                    lineNo: phrase.lineNo || 0,
+                    colOffset: phrase.colOffset || 0,
+                }));
             }
 
             // Build query
@@ -147,7 +159,19 @@ export class SupabaseAdapter implements DatabaseAdapter {
                 console.error("Search error:", error);
                 // Fallback to cache
                 const cachedResults = await cache.searchLocal(query, { limit, lang: language });
-                return cachedResults.map(this.mapToSearchResult);
+                return cachedResults.map((phrase) => ({
+                    id: phrase.id,
+                    text: phrase.text,
+                    translation: phrase.translation,
+                    context: phrase.context,
+                    tags: phrase.tags,
+                    lang: phrase.lang,
+                    addedAt: phrase.addedAt,
+                    sourceFile: phrase.sourceFile || "",
+                    contentHash: phrase.contentHash || "",
+                    lineNo: phrase.lineNo || 0,
+                    colOffset: phrase.colOffset || 0,
+                }));
             }
 
             // Update cache with results
@@ -160,7 +184,19 @@ export class SupabaseAdapter implements DatabaseAdapter {
             console.error("Search failed:", error);
             // Fallback to cache
             const cachedResults = await cache.searchLocal(query, { limit, lang: language });
-            return cachedResults.map(this.mapToSearchResult);
+            return cachedResults.map((phrase) => ({
+                id: phrase.id,
+                text: phrase.text,
+                translation: phrase.translation,
+                context: phrase.context,
+                tags: phrase.tags,
+                lang: phrase.lang,
+                addedAt: phrase.addedAt,
+                sourceFile: phrase.sourceFile || "",
+                contentHash: phrase.contentHash || "",
+                lineNo: phrase.lineNo || 0,
+                colOffset: phrase.colOffset || 0,
+            }));
         }
     }
 
