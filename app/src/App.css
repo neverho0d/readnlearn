@@ -9,6 +9,8 @@
     --topbar-bg: #1a202c;
     --topbar-text: #ffffff;
     --bg-hover: #d7dbdf;
+    --overlay-bg: #1a1a1a;
+    --overlay-text: #ffffff;
 }
 
 :root[data-theme="dark"] {
@@ -23,6 +25,8 @@
     --topbar-bg: #0e1013;
     --topbar-text: #e5e7eb;
     --bg-hover: #1f2937;
+    --overlay-bg: #000000;
+    --overlay-text: #ffffff;
 }
 
 body {

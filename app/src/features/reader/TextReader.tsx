@@ -191,7 +191,7 @@ interface TextReaderProps {
     sourceFile?: string;
     savedPhrases?: Array<{ id: string; text: string; position: number; formulaPosition?: number }>;
     followText?: boolean;
-    onVisiblePhrasesChange?: (visiblePhrases: Set<string>) => void;
+    onVisiblePhrasesChange?: (_visiblePhrases: Set<string>) => void;
 }
 
 export const TextReader: React.FC<TextReaderProps> = ({
@@ -268,7 +268,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
                 setTimeout(() => {
                     isProgrammaticScroll.current = false;
                 }, 100);
-            } catch (error) {
+            } catch {
                 // Fallback to old format (just a number)
                 const position = parseInt(savedData, 10);
                 if (!isNaN(position)) {
@@ -298,12 +298,42 @@ export const TextReader: React.FC<TextReaderProps> = ({
                 restoreScrollPosition();
                 // Mark content as prepared after scroll position is restored
                 setIsContentPrepared(true);
+
+                // Emit event when TextReader UI is fully ready
+                const checkAndEmitReady = () => {
+                    // Wait for phrase decoration to complete
+                    const phraseAnchors = document.querySelectorAll(".phrase-anchor");
+                    const expectedPhrases = savedPhrases.length;
+
+                    // Also check if font size has been applied
+                    const mainPane = document.querySelector(".main-pane");
+                    const computedStyle = mainPane ? getComputedStyle(mainPane) : null;
+                    const fontSizeApplied = computedStyle && computedStyle.fontSize !== "16px";
+
+                    if (
+                        (phraseAnchors.length >= expectedPhrases || expectedPhrases === 0) &&
+                        (fontSizeApplied || !settings.fontSize || settings.fontSize === 16)
+                    ) {
+                        const event = new CustomEvent("readnlearn:ui-ready");
+                        window.dispatchEvent(event);
+                    } else {
+                        // If not ready, wait a bit more
+                        setTimeout(checkAndEmitReady, 100);
+                    }
+                };
+
+                // Start checking after a delay to allow for all transformations
+                setTimeout(checkAndEmitReady, 500);
             }, 100);
         } else if (!text) {
             // No content to load, mark as prepared immediately
             setIsContentPrepared(true);
+
+            // Emit event for empty content
+            const event = new CustomEvent("readnlearn:ui-ready");
+            window.dispatchEvent(event);
         }
-    }, [text, restoreScrollPosition]);
+    }, [text, restoreScrollPosition, savedPhrases]);
 
     // Detect visible phrases for follow text functionality
     const detectVisiblePhrases = React.useCallback(() => {

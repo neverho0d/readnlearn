@@ -234,6 +234,35 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
         return rows;
     }, [rows, filterText, showAllPhrases, savedPhrases, followText, visiblePhrases]);
 
+    // Emit event when DictionaryView UI is fully ready
+    React.useEffect(() => {
+        const emitReadyEvent = () => {
+            // Wait for all DOM updates to complete
+            setTimeout(() => {
+                // Double-check that all phrase elements are actually rendered
+                const phraseElements = document.querySelectorAll('[id^="phrase-card-"]');
+                const expectedCount = filteredRows.length;
+
+                // Also check if the phrase pane is visible and has content
+                const phrasePane = document.getElementById("phrase-pane-root");
+                const isPhrasePaneReady = phrasePane && phrasePane.children.length > 0;
+
+                if (
+                    (phraseElements.length >= expectedCount || expectedCount === 0) &&
+                    isPhrasePaneReady
+                ) {
+                    const event = new CustomEvent("readnlearn:ui-ready");
+                    window.dispatchEvent(event);
+                } else {
+                    // If not all elements are rendered yet, wait a bit more
+                    setTimeout(emitReadyEvent, 150);
+                }
+            }, 300); // Give more time for DOM updates
+        };
+
+        emitReadyEvent();
+    }, [filteredRows.length, filterText]);
+
     if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
 
     // Reader pane requirement: if forced empty when no text, render nothing

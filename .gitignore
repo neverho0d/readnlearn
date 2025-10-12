@@ -132,3 +132,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+ENHANCED_FTS_DOCUMENTATION.md
+SUPABASE_SETUP.md
+app/tests/COVERAGE_ASSESSMENT.md
+docs/MULTILINGUAL_FTS_SETUP.md

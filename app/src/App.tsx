@@ -91,6 +91,9 @@ function MainAppContent() {
     const [sourceFile, setSourceFile] = useState<string | null>(null);
     const [restored, setRestored] = useState(false);
 
+    // Startup overlay state to cover all UI preparations
+    const [isStartupComplete, setIsStartupComplete] = useState(false);
+
     // Scroll-following state for phrase pane
     const [followText, setFollowText] = useState(() => {
         return localStorage.getItem("readnlearn-follow-text") === "true";
@@ -106,6 +109,86 @@ function MainAppContent() {
     useEffect(() => {
         document.title = "Read-n-Learn";
     }, []);
+
+    // Comprehensive startup sequence to cover all UI preparations
+    useEffect(() => {
+        let uiReadyCount = 0;
+        const expectedEvents = 2; // TextReader + DictionaryView
+        let startupTimeout: NodeJS.Timeout;
+
+        const handleUIReady = () => {
+            uiReadyCount++;
+            console.log(`UI Ready event received (${uiReadyCount}/${expectedEvents})`);
+
+            if (uiReadyCount >= expectedEvents) {
+                // All components are ready, but wait a bit more for final transformations
+                setTimeout(() => {
+                    // Final check: ensure all UI elements are properly rendered
+                    const mainPane = document.querySelector(".main-pane");
+                    const phrasePane = document.getElementById("phrase-pane-root");
+                    const isMainPaneReady = mainPane && getComputedStyle(mainPane).opacity === "1";
+                    const isPhrasePaneReady = phrasePane && phrasePane.children.length > 0;
+
+                    if (isMainPaneReady && isPhrasePaneReady) {
+                        console.log("All UI components ready, completing startup");
+                        // Add 2 second delay before hiding overlay
+                        setTimeout(() => {
+                            clearTimeout(startupTimeout);
+                            setIsStartupComplete(true);
+                        }, 2000);
+                    } else {
+                        // If not ready, wait a bit more
+                        setTimeout(() => {
+                            console.log("Final UI check passed, completing startup");
+                            // Add 2 second delay before hiding overlay
+                            setTimeout(() => {
+                                clearTimeout(startupTimeout);
+                                setIsStartupComplete(true);
+                            }, 2000);
+                        }, 200);
+                    }
+                }, 100);
+            }
+        };
+
+        // Listen for UI ready events
+        window.addEventListener("readnlearn:ui-ready", handleUIReady);
+
+        const startupSequence = async () => {
+            // Step 1: Wait for initial app setup
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // Step 2: Wait for content to be loaded and prepared
+            if (externalText) {
+                // Wait for phrases to be loaded
+                await new Promise((resolve) => setTimeout(resolve, 200));
+
+                // Wait for TextReader to prepare content
+                await new Promise((resolve) => setTimeout(resolve, 300));
+            }
+
+            // Step 3: Wait for any follow text detection
+            if (followText && savedPhrases.length > 0) {
+                await new Promise((resolve) => setTimeout(resolve, 200));
+            }
+
+            // Step 4: Set a fallback timeout in case events don't fire
+            startupTimeout = setTimeout(() => {
+                console.log("Startup timeout reached, completing startup");
+                setIsStartupComplete(true);
+            }, 7000); // 7 second fallback (5 + 2) to allow for all transformations
+        };
+
+        startupSequence();
+
+        // Cleanup event listener
+        return () => {
+            window.removeEventListener("readnlearn:ui-ready", handleUIReady);
+            if (startupTimeout) {
+                clearTimeout(startupTimeout);
+            }
+        };
+    }, [externalText, followText, savedPhrases]);
 
     /**
      * Loads saved phrases for the current content
@@ -339,7 +422,66 @@ function MainAppContent() {
         <SettingsProvider>
             <ThemeProvider>
                 <I18nProvider>
-                    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)" }}>
+                    <div
+                        style={{
+                            minHeight: "100vh",
+                            backgroundColor: "var(--bg)",
+                            position: "relative",
+                        }}
+                    >
+                        {/* Startup Overlay */}
+                        {!isStartupComplete && (
+                            <div
+                                style={{
+                                    position: "fixed",
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: "var(--overlay-bg)",
+                                    zIndex: 99999,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "16px",
+                                    width: "100vw",
+                                    height: "100vh",
+                                    margin: 0,
+                                    padding: 0,
+                                    border: "none",
+                                    outline: "none",
+                                }}
+                            >
+                                <style>
+                                    {`
+                                        @keyframes spin {
+                                            0% { transform: rotate(0deg); }
+                                            100% { transform: rotate(360deg); }
+                                        }
+                                    `}
+                                </style>
+                                <div
+                                    style={{
+                                        width: "40px",
+                                        height: "40px",
+                                        border: "4px solid var(--border)",
+                                        borderTop: "4px solid var(--primary)",
+                                        borderRadius: "50%",
+                                        animation: "spin 1s linear infinite",
+                                    }}
+                                />
+                                <div
+                                    style={{
+                                        color: "var(--overlay-text)",
+                                        fontSize: "14px",
+                                        textAlign: "center",
+                                    }}
+                                >
+                                    Preparing application...
+                                </div>
+                            </div>
+                        )}
                         <LanguageSettings
                             isLoading={isLoading}
                             onLoadFile={handleLoadFile}
