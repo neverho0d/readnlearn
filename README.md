@@ -4,13 +4,13 @@
 
 # ReadNLearn - Text Reader with Learning Support
 
-A local-first phrase book with cloud providers (LLM/MT/TTS) for memorizing via short stories + cloze, then extend to readers (EPUB/PDF), local engines, and integrations (Anki, etc.).
+A cloud-first phrase book with offline cache and cloud providers (LLM/MT/TTS) for memorizing via short stories + cloze, then extend to readers (EPUB/PDF), local engines, and integrations (Anki, etc.).
 
 ## Tech Stack
 
 - **Frontend**: React 19 + TypeScript + Chakra UI v3
 - **Desktop**: Tauri (Rust-based)
-- **Database**: SQLite (better-sqlite3)
+- **Database**: Supabase (PostgreSQL with PGroonga FTS)
 - **State Management**: Zustand
 - **Testing**: Vitest + Testing Library
 - **Cloud Providers**: OpenAI v6, DeepL, Google Translate
@@ -26,8 +26,8 @@ A local-first phrase book with cloud providers (LLM/MT/TTS) for memorizing via s
 2. Set up environment variables:
 
     ```bash
-    cp .env.example .env
-    # Edit .env with your API keys
+    cp env.example .env
+    # Edit .env with your Supabase URL and API keys
     ```
 
 3. Run development server:

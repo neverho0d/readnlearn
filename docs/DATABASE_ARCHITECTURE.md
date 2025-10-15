@@ -2,12 +2,12 @@
 
 ## Overview
 
-The application uses a **database abstraction layer** that allows seamless switching between different database backends:
+The application uses a **cloud-first architecture** with offline caching:
 
-- **SQLite (Tauri Desktop)** - Primary database for desktop applications
-- **PostgreSQL (Cloud)** - For cloud deployment scenarios
-- **MySQL (Cloud)** - Future support for MySQL deployments
-- **SQLite Browser (Fallback)** - Emergency fallback for browser-only scenarios
+- **Supabase (PostgreSQL)** - Primary cloud database with PGroonga FTS
+- **IndexedDB (Browser Cache)** - Offline cache for desktop applications
+- **Real-time Sync** - Bidirectional synchronization between cloud and local cache
+- **User Authentication** - Required for all data operations
 
 ## Architecture Principles
 
@@ -17,11 +17,11 @@ The application uses a **database abstraction layer** that allows seamless switc
 - **No browser mode fallback** in production scenarios
 - Browser mode is only for standalone web applications (not recommended)
 
-### 2. **Database Abstraction Layer**
+### 2. **Cloud-First with Offline Cache**
 
-- All database operations go through the `DatabaseAdapter` interface
-- Database-specific implementations are isolated in adapter classes
-- Easy to switch between database backends without changing application code
+- All database operations go through the `SupabaseAdapter` interface
+- IndexedDB cache provides offline functionality
+- Real-time synchronization keeps data in sync across devices
 
 ### 3. **Environment-Based Configuration**
 
@@ -31,13 +31,16 @@ The application uses a **database abstraction layer** that allows seamless switc
 
 ## Database Adapters
 
-### SQLiteAdapter (Tauri Desktop)
+### SupabaseAdapter (Cloud Database)
 
 ```typescript
-// Primary database for desktop applications
+// Primary database for cloud applications
 const db = await DatabaseFactory.getInstance({
-    type: "sqlite",
-    options: { dbPath: "sqlite:readnlearn.db" },
+    type: "supabase",
+    options: { 
+        url: process.env.VITE_SUPABASE_URL,
+        key: process.env.VITE_SUPABASE_ANON_KEY 
+    },
 });
 ```
 
@@ -46,7 +49,7 @@ const db = await DatabaseFactory.getInstance({
 - ✅ Full FTS5 support with stemming
 - ✅ Real file-based persistence
 - ✅ No size limitations
-- ✅ Native SQLite performance
+- ✅ Cloud PostgreSQL performance with PGroonga FTS
 - ✅ ACID transactions
 
 ### PostgreSQLAdapter (Cloud)
@@ -71,7 +74,7 @@ const db = await DatabaseFactory.getInstance({
 
 ### Current State (v0.1.6)
 
-- ✅ SQLite with FTS5 (Tauri desktop)
+- ✅ Supabase with PGroonga FTS (Cloud)
 - ✅ Database abstraction layer implemented
 - ✅ PostgreSQL adapter ready
 
@@ -131,7 +134,7 @@ CREATE TABLE phrases (
 
 ## Performance Considerations
 
-### SQLite (Desktop)
+### Supabase (Cloud)
 
 - **File-based:** Single file database
 - **FTS5:** Native full-text search
@@ -147,7 +150,7 @@ CREATE TABLE phrases (
 
 ## Security Considerations
 
-### SQLite (Desktop)
+### Supabase (Cloud)
 
 - **File permissions:** Database file access control
 - **Local only:** No network exposure
@@ -188,9 +191,9 @@ import Database from "@tauri-apps/plugin-sql";
 
 ```typescript
 // The application automatically detects:
-// - Tauri desktop → SQLite
+// - Tauri desktop → Supabase
 // - Cloud deployment → PostgreSQL
-// - Development fallback → SQLite
+// - Development fallback → IndexedDB
 ```
 
 ## Troubleshooting

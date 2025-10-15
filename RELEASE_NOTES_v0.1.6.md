@@ -71,7 +71,7 @@
 
 ## 📋 System Requirements
 - Tauri desktop environment (browser mode no longer supported)
-- SQLite database (included with Tauri)
+- Supabase database (PostgreSQL with PGroonga FTS)
 - Modern operating system (Windows, macOS, Linux)
 
 ## 🎯 Next Steps
@@ -85,7 +85,7 @@
 **Release Date**: $(date)  
 **Version**: 0.1.6  
 **Compatibility**: Tauri Desktop Only  
-**Database**: SQLite with FTS5  
+**Database**: Supabase (PostgreSQL with PGroonga FTS)  
 
 ## 🏆 Quality Metrics
 - ✅ 70 Tests Passing

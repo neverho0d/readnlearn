@@ -4,11 +4,11 @@
 
 ### ✅ Implemented Features (Stage 0 - Foundation)
 
-- **Core Application**: Tauri + React + TypeScript + SQLite
+- **Core Application**: Tauri + React + TypeScript + Supabase
 - **UI/UX**: Two-pane layout, dark/light themes, responsive design
 - **Internationalization**: L1/L2 language support with 6 languages (EN, ES, FR, DE, IT, PT)
 - **Text Reader**: Markdown rendering, file loading (.txt/.md), sample texts
-- **Phrase Management**: Save phrases with position tracking, SQLite persistence
+- **Phrase Management**: Save phrases with position tracking, Supabase persistence with IndexedDB cache
 - **Dictionary Mode**: Phrase listing with search, filtering, and removal
 - **Settings**: Persistent configuration, font selection, window state
 - **Testing**: Vitest setup with basic test coverage
@@ -25,7 +25,7 @@
 │   ├── settings/     # Language, theme, font controls
 │   └── study/        # Learning mode (placeholder)
 ├── lib/              # Core business logic
-│   ├── db/          # SQLite operations, phrase storage
+│   ├── db/          # Supabase operations, phrase storage
 │   ├── i18n/        # Internationalization
 │   ├── settings/    # Settings management
 │   ├── phrases/     # Phrase position calculation
@@ -100,7 +100,7 @@
 ### 🏗️ Architecture Principles
 
 1. **Adapter Pattern**: All external services use pluggable interfaces
-2. **Local-First**: SQLite as primary storage, cloud as enhancement
+2. **Cloud-First**: Supabase as primary storage, IndexedDB for offline cache
 3. **Type Safety**: Comprehensive TypeScript coverage
 4. **Testing**: 80%+ code coverage with meaningful tests
 5. **Performance**: Lazy loading, virtualization, efficient rendering
@@ -149,13 +149,13 @@
 
 - **Provider Rate Limits**: Implement exponential backoff, caching
 - **Performance**: Use virtualization for large phrase lists
-- **Data Loss**: Robust SQLite backup and recovery
+- **Data Loss**: Robust Supabase backup and IndexedDB sync recovery
 - **API Changes**: Version pinning, adapter abstraction
 
 ### Business Risks
 
 - **User Adoption**: Focus on core learning workflow
-- **Competition**: Emphasize local-first, privacy-focused approach
+- **Competition**: Emphasize cloud-first with offline cache, privacy-focused approach
 - **Maintenance**: Comprehensive documentation and testing
 
 ## Long-term Vision
