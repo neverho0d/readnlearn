@@ -37,16 +37,16 @@ The application uses a **cloud-first architecture** with offline caching:
 // Primary database for cloud applications
 const db = await DatabaseFactory.getInstance({
     type: "supabase",
-    options: { 
+    options: {
         url: process.env.VITE_SUPABASE_URL,
-        key: process.env.VITE_SUPABASE_ANON_KEY 
+        key: process.env.VITE_SUPABASE_ANON_KEY,
     },
 });
 ```
 
 **Features:**
 
-- ✅ Full FTS5 support with stemming
+- ✅ Full FTS support with stemming
 - ✅ Real file-based persistence
 - ✅ No size limitations
 - ✅ Cloud PostgreSQL performance with PGroonga FTS

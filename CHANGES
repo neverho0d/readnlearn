@@ -1,6 +1,6 @@
 # CHANGES
 
-## [Unreleased] - TypeScript Compilation Fixes for CI/CD Compliance
+## [v0.1.7] - TypeScript Compilation Fixes for CI/CD Compliance
 
 ### 🚀 Major Improvements
 - **Reduced TypeScript compilation errors from 80 to 6** (92.5% reduction!)
