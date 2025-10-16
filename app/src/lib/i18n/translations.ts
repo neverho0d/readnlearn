@@ -4,6 +4,8 @@ export interface Translations {
     l1Label: string;
     l2Label: string;
     autoDetect: string;
+    auto: string;
+    detecting: string;
     currentConfig: string;
 
     // Text Reader
@@ -37,6 +39,13 @@ export interface Translations {
     sampleSubtitle: string;
     sampleContent: string;
     sampleText: string;
+
+    // UI Elements
+    reading: string;
+    dictionary: string;
+    learning: string;
+    light: string;
+    dark: string;
 }
 
 export const translations: Record<string, Translations> = {
@@ -45,6 +54,8 @@ export const translations: Record<string, Translations> = {
         l1Label: "L1:",
         l2Label: "L2:",
         autoDetect: "Auto",
+        auto: "Auto",
+        detecting: "Detecting...",
         currentConfig: "English → Spanish",
         loadSampleText: "Load Sample Text",
         loadButton: "Load",
@@ -102,12 +113,19 @@ After Madrid, I traveled to Barcelona. This city is completely different. Gaudí
 ## Conclusion
 
 My experience in Spain was unforgettable. Not only did I improve my Spanish, but I also made friends for life. I recommend everyone to visit this beautiful country.`,
+        reading: "Reading",
+        dictionary: "Dictionary",
+        learning: "Learning",
+        light: "Light",
+        dark: "Dark",
     },
     es: {
         appTitle: "Read-n-Learn",
         l1Label: "L1:",
         l2Label: "L2:",
         autoDetect: "Auto",
+        auto: "Auto",
+        detecting: "Detectando...",
         currentConfig: "Español → Inglés",
         loadSampleText: "Cargar Texto de Muestra",
         loadButton: "Cargar",
@@ -165,12 +183,19 @@ Después de Madrid, viajé a Barcelona. Esta ciudad es completamente diferente. 
 ## Conclusión
 
 Mi experiencia en España fue inolvidable. No solo mejoré mi español, sino que también hice amigos para toda la vida. Recomiendo a todos que visiten este hermoso país.`,
+        reading: "Lectura",
+        dictionary: "Diccionario",
+        learning: "Aprendizaje",
+        light: "Claro",
+        dark: "Oscuro",
     },
     fr: {
         appTitle: "Read-n-Learn",
         l1Label: "L1:",
         l2Label: "L2:",
         autoDetect: "Auto",
+        auto: "Auto",
+        detecting: "Détection...",
         currentConfig: "Français → Anglais",
         loadSampleText: "Charger Texte d'Exemple",
         loadButton: "Charger",
@@ -228,12 +253,19 @@ Après Madrid, j'ai voyagé à Barcelone. Cette ville est complètement différe
 ## Conclusion
 
 Mon expérience en Espagne était inoubliable. Non seulement j'ai amélioré mon espagnol, mais j'ai aussi fait des amis pour la vie. Je recommande à tous de visiter ce beau pays.`,
+        reading: "Lecture",
+        dictionary: "Dictionnaire",
+        learning: "Apprentissage",
+        light: "Clair",
+        dark: "Sombre",
     },
     de: {
         appTitle: "Read-n-Learn",
         l1Label: "L1:",
         l2Label: "L2:",
         autoDetect: "Auto",
+        auto: "Auto",
+        detecting: "Erkennung...",
         currentConfig: "Deutsch → Englisch",
         loadSampleText: "Beispieltext Laden",
         loadButton: "Laden",
@@ -291,12 +323,19 @@ Nach Madrid reiste ich nach Barcelona. Diese Stadt ist völlig anders. Gaudís A
 ## Fazit
 
 Meine Erfahrung in Spanien war unvergesslich. Ich verbesserte nicht nur mein Spanisch, sondern fand auch Freunde fürs Leben. Ich empfehle jedem, dieses schöne Land zu besuchen.`,
+        reading: "Lesen",
+        dictionary: "Wörterbuch",
+        learning: "Lernen",
+        light: "Hell",
+        dark: "Dunkel",
     },
     it: {
         appTitle: "Read-n-Learn",
         l1Label: "L1:",
         l2Label: "L2:",
         autoDetect: "Auto",
+        auto: "Auto",
+        detecting: "Rilevamento...",
         currentConfig: "Italiano → Inglese",
         loadSampleText: "Carica Testo di Esempio",
         loadButton: "Carica",
@@ -354,12 +393,19 @@ Dopo Madrid, ho viaggiato a Barcellona. Questa città è completamente diversa. 
 ## Conclusione
 
 La mia esperienza in Spagna è stata indimenticabile. Non solo ho migliorato il mio spagnolo, ma ho anche fatto amicizie per tutta la vita. Raccomando a tutti di visitare questo bellissimo paese.`,
+        reading: "Lettura",
+        dictionary: "Dizionario",
+        learning: "Apprendimento",
+        light: "Chiaro",
+        dark: "Scuro",
     },
     pt: {
         appTitle: "Read-n-Learn",
         l1Label: "L1:",
         l2Label: "L2:",
         autoDetect: "Auto",
+        auto: "Auto",
+        detecting: "Detectando...",
         currentConfig: "Português → Inglês",
         loadSampleText: "Carregar Texto de Exemplo",
         loadButton: "Carregar",
@@ -417,5 +463,10 @@ Depois de Madrid, viajei para Barcelona. Esta cidade é completamente diferente.
 ## Conclusão
 
 Minha experiência na Espanha foi inesquecível. Não apenas melhorei meu espanhol, mas também fiz amigos para toda a vida. Recomendo a todos que visitem este belo país.`,
+        reading: "Leitura",
+        dictionary: "Dicionário",
+        learning: "Aprendizagem",
+        light: "Claro",
+        dark: "Escuro",
     },
 };

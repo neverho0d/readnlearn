@@ -24,7 +24,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         detectSessionInUrl: true,
         // Tauri-specific configuration
         flowType: "pkce",
-        debug: true,
+        debug: false,
     },
     realtime: {
         params: {

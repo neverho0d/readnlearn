@@ -23,7 +23,7 @@ export interface PhraseManagerOptions {
  * Enhanced to use context for ubiquitous phrases and proper ordering
  */
 export function calculatePhrasePosition(phrase: SavedPhrase, text: string): number {
-    console.log(`🔍 calculatePhrasePosition called for: "${phrase.text.substring(0, 50)}..."`);
+    // console.log(`🔍 calculatePhrasePosition called for: "${phrase.text.substring(0, 50)}..."`);
 
     // 1) Use saved line/column position as primary method (most accurate)
     if (phrase.lineNo !== undefined && phrase.lineNo > 0) {
@@ -54,16 +54,16 @@ export function calculatePhrasePosition(phrase: SavedPhrase, text: string): numb
             return actualTextPosition;
         }
 
-        console.log(`⚠️ Saved position doesn't match, trying other methods...`);
+        // console.log(`⚠️ Saved position doesn't match, trying other methods...`);
     }
 
     // 2) Use context for ubiquitous phrases (like "and", "I", etc.)
     if (phrase.context && phrase.context.trim()) {
-        console.log(`🔍 Using context for phrase lookup: "${phrase.context.substring(0, 50)}..."`);
+        // console.log(`🔍 Using context for phrase lookup: "${phrase.context.substring(0, 50)}..."`);
 
         const contextPosition = findPhraseWithContext(phrase.text, phrase.context, text);
         if (contextPosition >= 0) {
-            console.log(`✅ Found phrase using context at position: ${contextPosition}`);
+            // console.log(`✅ Found phrase using context at position: ${contextPosition}`);
             return contextPosition;
         }
     }
@@ -72,15 +72,15 @@ export function calculatePhrasePosition(phrase: SavedPhrase, text: string): numb
     let position = text.indexOf(phrase.text);
     console.log(`📍 Exact match result: ${position}`);
     if (position >= 0) {
-        console.log(`✅ Found exact match at position: ${position}`);
+        // console.log(`✅ Found exact match at position: ${position}`);
         return position;
     }
 
     // 4) Case-insensitive match
     position = text.toLowerCase().indexOf(phrase.text.toLowerCase());
-    console.log(`📍 Case-insensitive match result: ${position}`);
+    // console.log(`📍 Case-insensitive match result: ${position}`);
     if (position >= 0) {
-        console.log(`✅ Found case-insensitive match at position: ${position}`);
+        // console.log(`✅ Found case-insensitive match at position: ${position}`);
         return position;
     }
 
@@ -100,14 +100,14 @@ export function calculatePhrasePosition(phrase: SavedPhrase, text: string): numb
         .trim();
 
     position = normalizedText.toLowerCase().indexOf(normalizedPhrase.toLowerCase());
-    console.log(`📍 Normalized whitespace match result: ${position}`);
+    // console.log(`📍 Normalized whitespace match result: ${position}`);
     if (position >= 0) {
-        console.log(`✅ Found normalized match at position: ${position}`);
+        // console.log(`✅ Found normalized match at position: ${position}`);
 
         // Instead of mapping back, find the phrase directly in original text
         // using a more robust approach
         const originalPosition = findPhraseInOriginalText(phrase.text, text);
-        console.log(`📍 Found in original text at position: ${originalPosition}`);
+        // console.log(`📍 Found in original text at position: ${originalPosition}`);
         return originalPosition;
     }
 
@@ -143,11 +143,11 @@ export function calculatePhrasePosition(phrase: SavedPhrase, text: string): numb
     const fuzzyRegex = new RegExp(fuzzyPhrase, "i");
     const fuzzyMatch = text.match(fuzzyRegex);
     if (fuzzyMatch) {
-        console.log(`✅ Found fuzzy match at position: ${fuzzyMatch.index}`);
+        // console.log(`✅ Found fuzzy match at position: ${fuzzyMatch.index}`);
         return fuzzyMatch.index || -1;
     }
 
-    console.log(`❌ Could not find phrase in text`);
+    // console.log(`❌ Could not find phrase in text`);
     return -1;
 }
 
@@ -155,9 +155,9 @@ export function calculatePhrasePosition(phrase: SavedPhrase, text: string): numb
  * Find phrase using context for better accuracy with ubiquitous phrases
  */
 function findPhraseWithContext(phraseText: string, context: string, text: string): number {
-    console.log(
-        `🔍 findPhraseWithContext called for: "${phraseText}" with context: "${context.substring(0, 50)}..."`,
-    );
+    // console.log(
+    //     `🔍 findPhraseWithContext called for: "${phraseText}" with context: "${context.substring(0, 50)}..."`,
+    // );
 
     // Normalize context and phrase
     const normalizedContext = context
@@ -203,7 +203,7 @@ function findPhraseWithContext(phraseText: string, context: string, text: string
         }
     }
 
-    console.log(`❌ Could not find phrase using context`);
+    // console.log(`❌ Could not find phrase using context`);
     return -1;
 }
 
@@ -242,19 +242,19 @@ function mapNormalizedPositionToOriginal(
 }
 
 function findPhraseInOriginalText(phraseText: string, originalText: string): number {
-    console.log(`🔍 findPhraseInOriginalText called for: "${phraseText.substring(0, 50)}..."`);
+    // console.log(`🔍 findPhraseInOriginalText called for: "${phraseText.substring(0, 50)}..."`);
 
     // 1) Try exact match first
     let position = originalText.indexOf(phraseText);
     if (position >= 0) {
-        console.log(`✅ Found exact match in original text at position: ${position}`);
+        // console.log(`✅ Found exact match in original text at position: ${position}`);
         return position;
     }
 
     // 2) Try case-insensitive match
     position = originalText.toLowerCase().indexOf(phraseText.toLowerCase());
     if (position >= 0) {
-        console.log(`✅ Found case-insensitive match in original text at position: ${position}`);
+        // console.log(`✅ Found case-insensitive match in original text at position: ${position}`);
         return position;
     }
 
@@ -282,9 +282,9 @@ function findPhraseInOriginalText(phraseText: string, originalText: string): num
 
         while (originalIndex < originalText.length && normalizedIndex < normalizedText.length) {
             if (normalizedIndex === position) {
-                console.log(
-                    `✅ Mapped normalized position ${position} to original position ${originalIndex}`,
-                );
+                // console.log(
+                //     `✅ Mapped normalized position ${position} to original position ${originalIndex}`,
+                // );
                 return originalIndex;
             }
 
@@ -304,7 +304,7 @@ function findPhraseInOriginalText(phraseText: string, originalText: string): num
         }
     }
 
-    console.log(`❌ Could not find phrase in original text`);
+    // console.log(`❌ Could not find phrase in original text`);
     return -1;
 }
 
@@ -364,7 +364,7 @@ export async function loadPhrasesForContent(
         if (currentContentHash) {
             try {
                 relevantPhrases = await loadPhrasesByContentHash(currentContentHash);
-                console.log("✅ Loaded phrases by content hash:", relevantPhrases.length);
+                // console.log("✅ Loaded phrases by content hash:", relevantPhrases.length);
             } catch (error) {
                 console.warn("Failed to load by content hash, trying source file:", error);
             }
@@ -374,17 +374,17 @@ export async function loadPhrasesForContent(
         if (relevantPhrases.length === 0 && sourceFile) {
             try {
                 relevantPhrases = await loadPhrasesBySource(sourceFile);
-                console.log("✅ Loaded phrases by source file:", relevantPhrases.length);
+                // console.log("✅ Loaded phrases by source file:", relevantPhrases.length);
             } catch (error) {
                 console.warn("Failed to load by source file:", error);
             }
         }
 
-        console.log("📊 Phrase filtering results:", {
-            relevantPhrases: relevantPhrases.length,
-            currentContentHash,
-            sourceFile,
-        });
+        // console.log("📊 Phrase filtering results:", {
+        //     relevantPhrases: relevantPhrases.length,
+        //     currentContentHash,
+        //     sourceFile,
+        // });
 
         // Sort phrases using the line_no * 100000 + col_offset formula for consistent ordering
         // This ensures proper visual order regardless of how positions are calculated
@@ -394,23 +394,23 @@ export async function loadPhrasesForContent(
             return positionB - positionA; // Sort in descending order (last to first for decoration)
         });
 
-        console.log(
-            "📋 Phrases sorted by line/column (last to first):",
-            sortedPhrases.map((p) => ({
-                id: p.id,
-                text: p.text.substring(0, 30) + "...",
-                lineNo: p.lineNo,
-                colOffset: p.colOffset,
-                context: p.context?.substring(0, 30) + "...",
-            })),
-        );
+        // console.log(
+        //     "📋 Phrases sorted by line/column (last to first):",
+        //     sortedPhrases.map((p) => ({
+        //         id: p.id,
+        //         text: p.text.substring(0, 30) + "...",
+        //         lineNo: p.lineNo,
+        //         colOffset: p.colOffset,
+        //         context: p.context?.substring(0, 30) + "...",
+        //     })),
+        // );
 
         // Calculate positions using the formula for consistent ordering
         const phrasesWithPositions = sortedPhrases
             .map((phrase) => {
-                console.log(
-                    `🔍 Calculating position for phrase: "${phrase.text.substring(0, 50)}..."`,
-                );
+                // console.log(
+                //     `🔍 Calculating position for phrase: "${phrase.text.substring(0, 50)}..."`,
+                // );
 
                 // Use the formula position for consistent ordering
                 const formulaPosition = (phrase.lineNo || 0) * 100000 + (phrase.colOffset || 0);
@@ -418,31 +418,31 @@ export async function loadPhrasesForContent(
                 // Still calculate actual text position for decoration
                 const actualPosition = calculatePhrasePosition(phrase, content);
 
-                console.log(
-                    `📍 Formula position: ${formulaPosition}, Actual position: ${actualPosition}`,
-                );
+                // console.log(
+                //     `📍 Formula position: ${formulaPosition}, Actual position: ${actualPosition}`,
+                // );
 
-                if (actualPosition < 0) {
-                    console.log(
-                        `❌ Phrase position calculation failed for: "${phrase.text.substring(0, 50)}..."`,
-                    );
-                } else {
-                    console.log(
-                        `✅ Phrase position found: ${actualPosition} (formula: ${formulaPosition}) for: "${phrase.text.substring(0, 50)}..."`,
-                    );
-                }
+                // if (actualPosition < 0) {
+                //     console.log(
+                //         `❌ Phrase position calculation failed for: "${phrase.text.substring(0, 50)}..."`,
+                //     );
+                // } else {
+                //     console.log(
+                //         `✅ Phrase position found: ${actualPosition} (formula: ${formulaPosition}) for: "${phrase.text.substring(0, 50)}..."`,
+                //     );
+                // }
 
                 // Enhanced debugging for multi-line phrases
-                if (phrase.text.includes("\n") || phrase.text.includes("\r")) {
-                    console.log("🔄 Multi-line phrase position calculation:", {
-                        phrase: phrase.text,
-                        hasNewlines: phrase.text.includes("\n"),
-                        hasCarriageReturns: phrase.text.includes("\r"),
-                        formulaPosition,
-                        actualPosition,
-                        found: actualPosition >= 0,
-                    });
-                }
+                // if (phrase.text.includes("\n") || phrase.text.includes("\r")) {
+                //     console.log("🔄 Multi-line phrase position calculation:", {
+                //         phrase: phrase.text,
+                //         hasNewlines: phrase.text.includes("\n"),
+                //         hasCarriageReturns: phrase.text.includes("\r"),
+                //         formulaPosition,
+                //         actualPosition,
+                //         found: actualPosition >= 0,
+                //     });
+                // }
 
                 return {
                     id: phrase.id,
@@ -457,7 +457,7 @@ export async function loadPhrasesForContent(
             })
             .filter((phrase) => phrase.position >= 0);
 
-        console.log("📊 Final phrases with positions:", phrasesWithPositions.length);
+        // console.log("📊 Final phrases with positions:", phrasesWithPositions.length);
 
         return phrasesWithPositions;
     } catch (error) {

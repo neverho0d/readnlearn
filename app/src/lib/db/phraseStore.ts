@@ -51,6 +51,7 @@ export interface SavedPhrase {
     addedAt: string; // ISO timestamp of when phrase was added
     sourceFile?: string; // Original filename where phrase was found
     contentHash?: string; // Hash of file content for verification
+    fileFormat?: "text" | "markdown"; // Format of the source file
     // Position of the phrase in the original text (1-based line, 0-based column offset)
     lineNo?: number; // Line number in source text (1-based)
     colOffset?: number; // Column offset within the line (0-based)

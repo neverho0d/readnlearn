@@ -5,28 +5,46 @@ import "./LanguageSettings.css";
 import { useTheme } from "../../lib/settings/ThemeContext";
 import { useAppMode } from "../../lib/state/appMode";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBookOpen, faBook, faGraduationCap } from "@fortawesome/free-solid-svg-icons";
+import { faBookOpen, faBook, faGraduationCap, faCog } from "@fortawesome/free-solid-svg-icons";
+import { useLanguageDetection } from "../../lib/hooks/useLanguageDetection";
+import { ProviderSettingsDialog } from "./ProviderSettingsDialog";
 
 interface LanguageSettingsProps {
     isLoading?: boolean;
     // eslint-disable-next-line no-unused-vars
     onLoadFile?: (text: string, filename?: string) => void;
-
-    onCloseFile?: () => void;
-    sourceFile?: string | null;
+    sourceFile?: string;
+    currentText?: string; // Current text content for language detection
 }
 
 export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
     isLoading = false,
     onLoadFile,
-    onCloseFile,
     sourceFile,
+    currentText,
 }) => {
     const { settings, updateSettings, getLanguageName } = useSettings();
     const { t } = useI18n();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const { theme, toggleTheme } = useTheme();
     const { mode, setMode } = useAppMode();
+    const {
+        isDetecting,
+        detectedLanguage,
+        detectionError,
+        detectTextLanguage,
+        getL2DisplayName,
+        isDetectionAvailable,
+    } = useLanguageDetection();
+
+    const [showProviderSettings, setShowProviderSettings] = React.useState(false);
+
+    // Trigger language detection for existing text when component mounts
+    React.useEffect(() => {
+        if (currentText && settings.l2AutoDetect && isDetectionAvailable()) {
+            detectTextLanguage(currentText);
+        }
+    }, [currentText, settings.l2AutoDetect]); // Removed detectTextLanguage and isDetectionAvailable from dependencies
 
     const handlePickFile = () => {
         if (onLoadFile && fileInputRef.current) {
@@ -57,13 +75,25 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
             console.log("text", text.length);
             onLoadFile(text, file.name);
 
+            // Trigger language detection if L2 is set to auto
+            if (settings.l2AutoDetect && text.trim() && isDetectionAvailable()) {
+                // Use setTimeout to avoid blocking the UI
+                setTimeout(() => {
+                    detectTextLanguage(text);
+                }, 100);
+            }
+
             // Persist last opened file path and name (for Tauri restore); no content
             try {
                 const anyFile = file as unknown as { path?: string };
                 if (anyFile.path) {
                     localStorage.setItem("readnlearn-last-file-path", anyFile.path);
                 } else {
-                    console.error("No path found for file", file, anyFile);
+                    console.warn("No file system path available (browser environment)", {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                    });
                 }
                 localStorage.setItem("readnlearn-last-file-name", file.name);
                 // Also keep last content as a fallback for environments where path is unavailable
@@ -137,7 +167,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                         title="Reading Mode"
                     >
                         <FontAwesomeIcon icon={faBookOpen} />
-                        <span>Reading</span>
+                        <span>{t.reading}</span>
                     </button>
 
                     {/* Dictionary Mode Button */}
@@ -159,7 +189,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                         title="Dictionary Mode"
                     >
                         <FontAwesomeIcon icon={faBook} />
-                        <span>Dictionary</span>
+                        <span>{t.dictionary}</span>
                     </button>
 
                     {/* Learning Mode Button */}
@@ -181,7 +211,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                         title="Learning Mode"
                     >
                         <FontAwesomeIcon icon={faGraduationCap} />
-                        <span>Learning</span>
+                        <span>{t.learning}</span>
                     </button>
                 </div>
             </div>
@@ -258,19 +288,14 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                 </div>
                 {/* Compact clickable indicator */}
                 <div className="lang-indicator" style={{ position: "relative" }}>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowL1Menu((s) => !s);
-                            setShowL2Menu(false);
-                        }}
+                    <div
                         style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
                             background: "transparent",
-                            border: "none",
-                            color: "var(--topbar-text)",
-                            cursor: "pointer",
                             padding: "4px 8px",
-                            fontSize: 12,
+                            cursor: "pointer",
                         }}
                         onMouseEnter={(e) =>
                             (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)")
@@ -278,35 +303,70 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                         onMouseLeave={(e) =>
                             (e.currentTarget.style.backgroundColor = "transparent")
                         }
-                        title={t.l1Label}
-                    >
-                        {getLanguageName(settings.l1)}
-                    </button>
-                    <span style={{ color: "#a0aec0", marginRight: 6, marginLeft: 2 }}>→</span>
-                    <button
                         onClick={(e) => {
                             e.stopPropagation();
                             setShowL2Menu((s) => !s);
                             setShowL1Menu(false);
                         }}
-                        style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "var(--topbar-text)",
-                            cursor: "pointer",
-                            padding: "4px 8px",
-                            fontSize: 12,
-                        }}
-                        onMouseEnter={(e) =>
-                            (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)")
-                        }
-                        onMouseLeave={(e) =>
-                            (e.currentTarget.style.backgroundColor = "transparent")
-                        }
-                        title={t.l2Label}
+                        title={`${t.l1Label} → ${t.l2Label}`}
                     >
-                        {settings.l2AutoDetect ? "Auto" : getLanguageName(settings.l2)}
-                    </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowL1Menu((s) => !s);
+                                setShowL2Menu(false);
+                            }}
+                            style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "var(--topbar-text)",
+                                cursor: "pointer",
+                                padding: "0",
+                                fontSize: 12,
+                            }}
+                            title={t.l1Label}
+                        >
+                            {getLanguageName(settings.l1)}
+                        </button>
+                        <span style={{ color: "#a0aec0" }}>→</span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowL2Menu((s) => !s);
+                                setShowL1Menu(false);
+                            }}
+                            style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "var(--topbar-text)",
+                                cursor: "pointer",
+                                padding: "0",
+                                fontSize: 12,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                            }}
+                            title={t.l2Label}
+                        >
+                            {isDetecting ? (
+                                <>
+                                    <div
+                                        style={{
+                                            width: "8px",
+                                            height: "8px",
+                                            border: "1px solid currentColor",
+                                            borderTop: "1px solid transparent",
+                                            borderRadius: "50%",
+                                            animation: "spin 1s linear infinite",
+                                        }}
+                                    />
+                                    {t.detecting}
+                                </>
+                            ) : (
+                                getL2DisplayName()
+                            )}
+                        </button>
+                    </div>
 
                     {showL1Menu && (
                         <div
@@ -356,7 +416,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                             style={{
                                 position: "absolute",
                                 top: 30,
-                                left: 120,
+                                left: 0,
                                 background: "#1f2937",
                                 border: "1px solid #374151",
                                 borderRadius: 6,
@@ -449,39 +509,6 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                         {t.loadButton}
                     </button>
                 )}
-                {sourceFile && onCloseFile && (
-                    <button
-                        onClick={onCloseFile}
-                        style={{
-                            backgroundColor: "transparent",
-                            color: "var(--topbar-text)",
-                            border: "1px solid #4a5568",
-                            borderRadius: "4px",
-                            padding: "6px 12px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                        }}
-                        title={`Close file: ${sourceFile}`}
-                    >
-                        <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                        Close
-                    </button>
-                )}
 
                 {/* Theme switch */}
                 <button
@@ -497,8 +524,21 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     }}
                     title={theme === "dark" ? "Switch to light" : "Switch to dark"}
                 >
-                    {theme === "dark" ? "Light" : "Dark"}
+                    {theme === "dark" ? t.light : t.dark}
                 </button>
+            </div>
+            <div>
+                <button
+                    className="icon-button"
+                    title="Provider settings"
+                    onClick={() => setShowProviderSettings(true)}
+                    aria-label="Provider settings"
+                >
+                    <FontAwesomeIcon icon={faCog} />
+                </button>
+                {showProviderSettings && (
+                    <ProviderSettingsDialog onClose={() => setShowProviderSettings(false)} />
+                )}
             </div>
             {/* hidden file input */}
             <input

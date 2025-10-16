@@ -30,6 +30,9 @@ import { useAppMode } from "./lib/state/appMode";
 import { generateContentHash } from "./lib/db/phraseStore";
 import { AuthScreen } from "./features/auth/AuthScreen";
 import { OAuthCallback } from "./features/auth/OAuthCallback";
+import { detectFileFormat } from "./lib/utils/fileFormat";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCog } from "@fortawesome/free-solid-svg-icons";
 
 /**
  * Main App Component
@@ -89,6 +92,7 @@ function MainAppContent() {
     const [isLoading, setIsLoading] = useState(false);
     const [externalText, setExternalText] = useState<string | null>(null);
     const [sourceFile, setSourceFile] = useState<string | null>(null);
+    const [fileFormat, setFileFormat] = useState<"text" | "markdown">("text");
     const [restored, setRestored] = useState(false);
 
     // Startup overlay state to cover all UI preparations
@@ -195,7 +199,7 @@ function MainAppContent() {
      * This function loads phrases that are associated with the current text content
      */
     const loadSavedPhrases = useCallback(async () => {
-        console.log("🔄 loadSavedPhrases called");
+        console.log("🔄 loadSavedPhrases called", { externalTextLength: externalText?.length });
         if (!externalText) {
             console.log("❌ No external text, clearing phrases");
             setSavedPhrases([]);
@@ -313,6 +317,10 @@ function MainAppContent() {
             const lastName = localStorage.getItem("readnlearn-last-file-name");
             const lastPath = localStorage.getItem("readnlearn-last-file-path");
             const lastContent = localStorage.getItem("readnlearn-last-file-content");
+            const lastFormat = localStorage.getItem("readnlearn-last-file-format") as
+                | "text"
+                | "markdown"
+                | null;
 
             if (!lastName) {
                 // Check if we have content but no filename - this might be a restoration issue
@@ -320,6 +328,7 @@ function MainAppContent() {
                     const fallbackName = "restored-file.txt";
                     setExternalText(lastContent);
                     setSourceFile(fallbackName);
+                    setFileFormat("text");
                     localStorage.setItem("readnlearn-instructions-dismissed", "true");
                 }
                 return;
@@ -329,6 +338,7 @@ function MainAppContent() {
                 if (text && text.length > 0) {
                     setExternalText(text);
                     setSourceFile(lastName);
+                    setFileFormat(lastFormat || "text");
                     localStorage.setItem("readnlearn-instructions-dismissed", "true");
                 }
             };
@@ -393,6 +403,16 @@ function MainAppContent() {
     const handleLoadFile = (text: string, filename?: string) => {
         setExternalText(text);
         setSourceFile(filename || null);
+
+        // Detect file format
+        if (filename) {
+            const format = detectFileFormat(filename, text);
+            setFileFormat(format);
+            localStorage.setItem("readnlearn-last-file-format", format);
+        } else {
+            setFileFormat("text");
+        }
+
         // Also dismiss instructions so the new text shows without sample/intro
         localStorage.setItem("readnlearn-instructions-dismissed", "true");
         // Save last opened metadata for future restore (no stored content)
@@ -410,12 +430,14 @@ function MainAppContent() {
     const handleCloseFile = () => {
         setExternalText(null);
         setSourceFile(null);
+        setFileFormat("text");
         // Clear saved phrases for the closed file
         setSavedPhrases([]);
         // Clear scroll position
         localStorage.removeItem("readnlearn-scroll-position");
-        // Clear last file name
+        // Clear last file name and format
         localStorage.removeItem("readnlearn-last-file-name");
+        localStorage.removeItem("readnlearn-last-file-format");
     };
 
     return (
@@ -429,6 +451,8 @@ function MainAppContent() {
                             position: "relative",
                         }}
                     >
+                        {/* Top-right settings (provider keys) */}
+                        <ProviderSettingsButton />
                         {/* Startup Overlay */}
                         {!isStartupComplete && (
                             <div
@@ -485,15 +509,16 @@ function MainAppContent() {
                         <LanguageSettings
                             isLoading={isLoading}
                             onLoadFile={handleLoadFile}
-                            onCloseFile={handleCloseFile}
-                            sourceFile={sourceFile}
+                            sourceFile={sourceFile || undefined}
+                            currentText={externalText || ""}
                         />
                         <MainContent
                             isLoading={isLoading}
                             externalText={externalText}
                             onLoadSampleText={handleLoadSampleText}
                             onPhraseSelect={handlePhraseSelect}
-                            sourceFile={sourceFile}
+                            sourceFile={sourceFile || undefined}
+                            fileFormat={fileFormat}
                             followText={followText}
                             visiblePhrases={visiblePhrases}
                             onFollowTextToggle={handleFollowTextToggle}
@@ -533,6 +558,7 @@ function MainContent(props: {
     // eslint-disable-next-line no-unused-vars
     onPhraseSelect: (p: string, c: string) => void;
     sourceFile?: string | null;
+    fileFormat: "text" | "markdown";
     followText: boolean;
     visiblePhrases: Set<string>;
     // eslint-disable-next-line no-unused-vars
@@ -553,6 +579,7 @@ function MainContent(props: {
         onLoadSampleText,
         onPhraseSelect,
         sourceFile,
+        fileFormat,
         followText,
         visiblePhrases,
         onFollowTextToggle,
@@ -768,6 +795,7 @@ function MainContent(props: {
                             content={externalText ?? ""}
                             onTextChange={setCurrentText}
                             sourceFile={sourceFile || undefined}
+                            fileFormat={fileFormat}
                             savedPhrases={savedPhrases}
                             followText={followText}
                             onVisiblePhrasesChange={setVisiblePhrases}
@@ -820,7 +848,7 @@ function MainContent(props: {
                                 height="12"
                                 viewBox="0 0 320 512"
                                 style={{ display: phrasesCollapsed ? "none" : "block" }}
-                            >
+                            >Diego turned off the highway onto the road that led between the fields of almond trees
                                 <path
                                     fill="currentColor"
                                     d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"
@@ -949,6 +977,145 @@ function App() {
                 </ThemeProvider>
             </SettingsProvider>
         </AuthProvider>
+    );
+}
+
+/** Provider Settings Button and Dialog **/
+function ProviderSettingsButton() {
+    const [open, setOpen] = React.useState(false);
+    return (
+        <div style={{ position: "fixed", top: 8, right: 8, zIndex: 1000 }} title="Settings">
+            <button
+                className="icon-button"
+                onClick={() => setOpen(true)}
+                aria-label="Open settings"
+                style={{ color: "var(--topbar-text)" }}
+            >
+                <FontAwesomeIcon icon={faCog} size="lg" />
+            </button>
+            {open && <ProviderSettingsDialog onClose={() => setOpen(false)} />}
+        </div>
+    );
+}
+
+function ProviderSettingsDialog({ onClose }: { onClose: () => void }) {
+    const { settings, updateSettings } = require("./lib/settings/SettingsContext").useSettings();
+    const [form, setForm] = React.useState({
+        openaiApiKey: settings.openaiApiKey || "",
+        openaiBaseUrl: settings.openaiBaseUrl || "",
+        deeplApiKey: settings.deeplApiKey || "",
+        deeplBaseUrl: settings.deeplBaseUrl || "",
+        googleApiKey: settings.googleApiKey || "",
+        googleBaseUrl: settings.googleBaseUrl || "",
+    });
+
+    const update = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+        setForm((p) => ({ ...p, [k]: e.target.value }));
+
+    const onSave = () => {
+        updateSettings({
+            openaiApiKey: form.openaiApiKey || undefined,
+            openaiBaseUrl: form.openaiBaseUrl || undefined,
+            deeplApiKey: form.deeplApiKey || undefined,
+            deeplBaseUrl: form.deeplBaseUrl || undefined,
+            googleApiKey: form.googleApiKey || undefined,
+            googleBaseUrl: form.googleBaseUrl || undefined,
+        });
+        onClose();
+    };
+
+    return (
+        <div
+            style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1001,
+            }}
+            onClick={onClose}
+        >
+            <div
+                role="dialog"
+                aria-modal="true"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    background: "var(--panel)",
+                    color: "var(--text)",
+                    padding: 16,
+                    borderRadius: 8,
+                    minWidth: 420,
+                    boxShadow: "0 10px 24px rgba(0,0,0,0.4)",
+                }}
+            >
+                <h3 style={{ margin: "0 0 12px 0" }}>Provider Settings</h3>
+                <div style={{ display: "grid", gap: 8 }}>
+                    <label>
+                        OpenAI API Key
+                        <input
+                            type="password"
+                            value={form.openaiApiKey}
+                            onChange={update("openaiApiKey")}
+                            style={{ width: "100%" }}
+                        />
+                    </label>
+                    <label>
+                        OpenAI Base URL (optional)
+                        <input
+                            type="text"
+                            value={form.openaiBaseUrl}
+                            onChange={update("openaiBaseUrl")}
+                            style={{ width: "100%" }}
+                        />
+                    </label>
+                    <label>
+                        DeepL API Key
+                        <input
+                            type="password"
+                            value={form.deeplApiKey}
+                            onChange={update("deeplApiKey")}
+                            style={{ width: "100%" }}
+                        />
+                    </label>
+                    <label>
+                        DeepL Base URL (optional)
+                        <input
+                            type="text"
+                            value={form.deeplBaseUrl}
+                            onChange={update("deeplBaseUrl")}
+                            style={{ width: "100%" }}
+                        />
+                    </label>
+                    <label>
+                        Google API Key
+                        <input
+                            type="password"
+                            value={form.googleApiKey}
+                            onChange={update("googleApiKey")}
+                            style={{ width: "100%" }}
+                        />
+                    </label>
+                    <label>
+                        Google Base URL (optional)
+                        <input
+                            type="text"
+                            value={form.googleBaseUrl}
+                            onChange={update("googleBaseUrl")}
+                            style={{ width: "100%" }}
+                        />
+                    </label>
+                </div>
+                <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button onClick={onClose}>Cancel</button>
+                    <button onClick={onSave}>Save</button>
+                </div>
+            </div>
+        </div>
     );
 }
 

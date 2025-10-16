@@ -1,7 +1,7 @@
 import React from "react";
 import { useI18n, getSampleTextForLanguage } from "../../lib/i18n/I18nContext";
 import { useSettings } from "../../lib/settings/SettingsContext";
-import { MarkdownRenderer } from "./MarkdownRenderer";
+import { ContentRenderer } from "./ContentRenderer";
 import { PhraseSelector } from "./PhraseSelector";
 import { savePhrase, generateContentHash } from "../../lib/db/phraseStore";
 
@@ -189,6 +189,7 @@ interface TextReaderProps {
     // eslint-disable-next-line no-unused-vars
     onTextChange?: (text: string) => void;
     sourceFile?: string;
+    fileFormat?: "text" | "markdown";
     savedPhrases?: Array<{ id: string; text: string; position: number; formulaPosition?: number }>;
     followText?: boolean;
     // eslint-disable-next-line no-unused-vars
@@ -202,6 +203,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
     isLoading = false,
     onTextChange,
     sourceFile,
+    fileFormat = "text",
     savedPhrases = [],
     followText = false,
     onVisiblePhrasesChange,
@@ -228,9 +230,10 @@ export const TextReader: React.FC<TextReaderProps> = ({
     // Sync external content when provided (file open)
     React.useEffect(() => {
         if (content && content !== text) {
-            setIsContentPrepared(false);
             setText(content);
             setShowInstructions(false);
+            // Mark content as prepared immediately to prevent decoration flickering
+            setIsContentPrepared(true);
         }
     }, [content, text]);
 
@@ -306,15 +309,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
                     const phraseAnchors = document.querySelectorAll(".phrase-anchor");
                     const expectedPhrases = savedPhrases.length;
 
-                    // Also check if font size has been applied
-                    const mainPane = document.querySelector(".main-pane");
-                    const computedStyle = mainPane ? getComputedStyle(mainPane) : null;
-                    const fontSizeApplied = computedStyle && computedStyle.fontSize !== "16px";
-
-                    if (
-                        (phraseAnchors.length >= expectedPhrases || expectedPhrases === 0) &&
-                        (fontSizeApplied || !settings.fontSize || settings.fontSize === 16)
-                    ) {
+                    if (phraseAnchors.length >= expectedPhrases || expectedPhrases === 0) {
                         const event = new CustomEvent("readnlearn:ui-ready");
                         window.dispatchEvent(event);
                     } else {
@@ -324,8 +319,8 @@ export const TextReader: React.FC<TextReaderProps> = ({
                 };
 
                 // Start checking after a delay to allow for all transformations
-                setTimeout(checkAndEmitReady, 500);
-            }, 100);
+                setTimeout(checkAndEmitReady, 200);
+            }, 50);
         } else if (!text) {
             // No content to load, mark as prepared immediately
             setIsContentPrepared(true);
@@ -511,6 +506,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
             tags: cleanedTags,
             sourceFile: sourceFile,
             contentHash: generateContentHash(text),
+            fileFormat: fileFormat,
             lineNo,
             colOffset,
         });
@@ -567,7 +563,6 @@ export const TextReader: React.FC<TextReaderProps> = ({
             // Optimize: only search up to the end of the last processed phrase
             const searchText = result.substring(0, lastProcessedEnd);
             const start = findPhraseWithFlexibleWhitespace(phrase.text, searchText);
-
             if (start === -1) {
                 continue;
             }
@@ -596,14 +591,16 @@ export const TextReader: React.FC<TextReaderProps> = ({
                             return `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
                         } else {
                             // Last part of multi-part: close previous span and add marker
-                            return `</span>\n<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+                            // return `</span>\n<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
+                            return `</span> <span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}<sup class="phrase-marker">${phrase.id.substring(0, 4)}</sup></span>`;
                         }
                     } else if (index === 0) {
                         // First part (but not last): start with opening span
                         return `<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}`;
                     } else {
                         // Middle parts: close previous span and open new one
-                        return `</span>\n<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}`;
+                        // return `</span>\n<span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}`;
+                        return `</span> <span class="phrase-anchor" data-phrase-id="${phrase.id}">${part}`;
                     }
                 });
 
@@ -748,7 +745,12 @@ export const TextReader: React.FC<TextReaderProps> = ({
                     onScroll={handleScroll}
                 >
                     {isContentPrepared ? (
-                        <MarkdownRenderer content={renderTextWithPhrases(text, savedPhrases)} />
+                        <ContentRenderer
+                            key={`${text.length}-${savedPhrases.length}-${fileFormat}`}
+                            content={renderTextWithPhrases(text, savedPhrases)}
+                            format={fileFormat}
+                            onClick={handleTextSelection}
+                        />
                     ) : (
                         <div
                             style={{

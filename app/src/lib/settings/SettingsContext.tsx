@@ -17,6 +17,7 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
+import { costController } from "./costControls";
 
 /**
  * Settings State Interface
@@ -31,6 +32,17 @@ interface SettingsState {
     font: string; // UI and reading font family
     fontSize: number; // Base font size in pixels
     theme: string; // Theme preference (dark/light)
+    // Provider API keys and optional base URLs
+    openaiApiKey?: string;
+    openaiBaseUrl?: string;
+    deeplApiKey?: string;
+    deeplBaseUrl?: string;
+    googleApiKey?: string;
+    googleBaseUrl?: string;
+    // Daily spending caps (USD) - local-only (saved in localStorage)
+    dailyCapOpenAI?: number;
+    dailyCapDeepL?: number;
+    dailyCapGoogle?: number;
 }
 
 /**
@@ -60,6 +72,9 @@ const DEFAULT_SETTINGS: SettingsState = {
     font: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif",
     fontSize: 16, // 16px base font size
     theme: "dark", // Default to dark theme
+    dailyCapOpenAI: 5,
+    dailyCapDeepL: 2,
+    dailyCapGoogle: 2,
 };
 
 /**
@@ -123,6 +138,26 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                             .single();
 
                         if (!error && userSettings) {
+                            // Merge any locally stored provider keys since Supabase table may not have these columns yet
+                            let localProviderKeys: Partial<SettingsState> = {};
+                            try {
+                                const rawLocal = localStorage.getItem("readnlearn-settings");
+                                if (rawLocal) {
+                                    const parsed = JSON.parse(rawLocal);
+                                    localProviderKeys = {
+                                        openaiApiKey: parsed.openaiApiKey,
+                                        openaiBaseUrl: parsed.openaiBaseUrl,
+                                        deeplApiKey: parsed.deeplApiKey,
+                                        deeplBaseUrl: parsed.deeplBaseUrl,
+                                        googleApiKey: parsed.googleApiKey,
+                                        googleBaseUrl: parsed.googleBaseUrl,
+                                        dailyCapOpenAI: parsed.dailyCapOpenAI,
+                                        dailyCapDeepL: parsed.dailyCapDeepL,
+                                        dailyCapGoogle: parsed.dailyCapGoogle,
+                                    };
+                                }
+                            } catch {}
+
                             setSettings({
                                 l1: userSettings.l1,
                                 l2: userSettings.l2,
@@ -130,17 +165,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                                 font: userSettings.font || DEFAULT_SETTINGS.font,
                                 fontSize: userSettings.font_size,
                                 theme: userSettings.theme,
+                                // Provider keys and spending caps from local storage
+                                ...localProviderKeys,
                             });
                             setLoading(false);
                             return;
                         } else if (error) {
                             console.log("Supabase settings error (table may not exist):", error);
-                            // Continue to localStorage fallback
                         }
-                    } catch (supabaseError) {
-                        console.log("Supabase connection error:", supabaseError);
-                        // Continue to localStorage fallback
-                    }
+                    } catch (supabaseError) {}
                 }
 
                 // Fallback to localStorage
@@ -150,9 +183,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         const localSettings = JSON.parse(raw);
                         setSettings({ ...DEFAULT_SETTINGS, ...localSettings });
                     }
-                } catch {
-                    // Use defaults if localStorage fails
-                }
+                } catch {}
             } catch (error) {
                 console.error("Failed to load settings:", error);
             } finally {
@@ -171,10 +202,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         const saveSettings = async () => {
             try {
-                // Save to localStorage as backup
+                // Save to localStorage as backup (includes caps and provider keys)
                 localStorage.setItem("readnlearn-settings", JSON.stringify(settings));
 
-                // Try to save to Supabase (if table exists)
+                // Save core UI settings to Supabase (no caps or provider keys)
                 const {
                     data: { user },
                 } = await supabase.auth.getUser();
@@ -192,9 +223,40 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         });
                     } catch (supabaseError) {
                         console.log("Supabase save error (table may not exist):", supabaseError);
-                        // Settings are already saved to localStorage, so this is not critical
                     }
                 }
+
+                // Apply daily caps to cost controller limits
+                costController.updateLimits([
+                    {
+                        provider: "openai",
+                        dailyLimit: settings.dailyCapOpenAI ?? 5,
+                        monthlyLimit: 50,
+                        requestLimit: 200,
+                        tokenLimit: 200000,
+                    },
+                    {
+                        provider: "deepl",
+                        dailyLimit: settings.dailyCapDeepL ?? 2,
+                        monthlyLimit: 20,
+                        requestLimit: 500,
+                        tokenLimit: 0,
+                    },
+                    {
+                        provider: "google",
+                        dailyLimit: settings.dailyCapGoogle ?? 2,
+                        monthlyLimit: 20,
+                        requestLimit: 500,
+                        tokenLimit: 0,
+                    },
+                    {
+                        provider: "polly",
+                        dailyLimit: 1,
+                        monthlyLimit: 10,
+                        requestLimit: 50,
+                        tokenLimit: 10000,
+                    },
+                ]);
             } catch (error) {
                 console.error("Failed to save settings:", error);
             }
