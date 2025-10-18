@@ -12,13 +12,15 @@ interface PlainTextRendererProps {
  * phrase decorations and maintaining text selection capabilities.
  */
 export const PlainTextRenderer: React.FC<PlainTextRendererProps> = ({ content, onClick }) => {
-    // Delegate clicks on decorated phrases
+    // Handle both text selection and clicks on decorated phrases
     const handleClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
         const target = e.target as HTMLElement | null;
         if (!target) return;
+
+        // Check if clicking on a decorated phrase
         const anchor = target.closest(".phrase-anchor") as HTMLElement | null;
         if (anchor) {
-            // Get the phrase ID from the data attribute
+            // Handle decorated phrase click
             const phraseId = anchor.getAttribute("data-phrase-id");
             if (!phraseId) return;
 
@@ -43,6 +45,12 @@ export const PlainTextRenderer: React.FC<PlainTextRendererProps> = ({ content, o
                 });
                 window.dispatchEvent(event);
             }
+            return; // Don't propagate to text selection handler
+        }
+
+        // If not clicking on a decorated phrase, handle as text selection
+        if (onClick) {
+            onClick(e);
         }
     };
 
@@ -78,7 +86,7 @@ export const PlainTextRenderer: React.FC<PlainTextRendererProps> = ({ content, o
                 whiteSpace: "pre-wrap",
                 wordWrap: "break-word", // Break long lines
             }}
-            onClick={onClick || handleClick}
+            onClick={handleClick}
         >
             {parseContent(content)}
         </div>

@@ -5,7 +5,7 @@
  * with expand/collapse functionality for each section.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 
@@ -16,6 +16,7 @@ export interface PhraseCardProps {
     explanation?: string | null;
     tags?: string[];
     isTranslating?: boolean;
+    // eslint-disable-next-line no-unused-vars
     onJumpToPhrase?: (phraseId: string) => void;
 }
 
@@ -38,9 +39,42 @@ export const PhraseCard: React.FC<PhraseCardProps> = ({
     };
 
     const phraseMarker = id.substring(0, 4);
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    // Listen for jump events to blink this specific phrase card
+    useEffect(() => {
+        const handleJump = (ev: Event) => {
+            const custom = ev as CustomEvent<{ marker?: string }>;
+            const marker = custom.detail?.marker || "";
+            if (marker && id.startsWith(marker)) {
+                const element = cardRef.current;
+                if (!element) return;
+
+                // Clear any previous inline color to avoid stacking residuals
+                element.style.backgroundColor = "";
+                const computed = getComputedStyle(element).backgroundColor;
+                element.style.backgroundColor = "rgba(180,180,180,0.25)";
+                setTimeout(() => {
+                    element.style.backgroundColor = computed;
+                }, 1000);
+
+                try {
+                    element.scrollIntoView({ behavior: "smooth", block: "center" });
+                } catch {
+                    // ignore
+                }
+            }
+        };
+
+        window.addEventListener("readnlearn:jump-to-phrase", handleJump);
+        return () => {
+            window.removeEventListener("readnlearn:jump-to-phrase", handleJump);
+        };
+    }, [id]);
 
     return (
         <div
+            ref={cardRef}
             key={id}
             id={`phrase-card-${id}`}
             style={{

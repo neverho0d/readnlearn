@@ -27,12 +27,14 @@ export interface PhraseRow {
 export interface PhraseListViewProps {
     filterText?: string;
     showAllPhrases?: boolean;
+    // eslint-disable-next-line no-unused-vars
     onToggleFilter?: (checked: boolean) => void;
     savedPhrases?: Array<{ id: string; text: string; position: number }>;
     forceEmptyWhenNoText?: boolean;
     allPhrases?: PhraseRow[];
     followText?: boolean;
     visiblePhrases?: Set<string>;
+    // eslint-disable-next-line no-unused-vars
     onFollowTextToggle?: (enabled: boolean) => void;
 }
 
@@ -141,36 +143,9 @@ export const PhraseListView: React.FC<PhraseListViewProps> = ({
         };
     }, []);
 
-    // Listen for requests from the reader to blink a specific phrase card
-    React.useEffect(() => {
-        const onJump = (ev: Event) => {
-            const custom = ev as CustomEvent<{ marker?: string }>;
-            const marker = custom.detail?.marker || "";
-            if (!marker) return;
-            const match = rows.find((r) => r.id.startsWith(marker));
-            if (!match) return;
-            const el = document.getElementById(`phrase-card-${match.id}`) as HTMLDivElement | null;
-            if (!el) return;
-            // Clear any previous inline color to avoid stacking residuals
-            el.style.backgroundColor = "";
-            const computed = getComputedStyle(el).backgroundColor;
-            el.style.backgroundColor = "rgba(180,180,180,0.25)";
-            setTimeout(() => {
-                el.style.backgroundColor = computed;
-            }, 1000);
-            try {
-                el.scrollIntoView({ behavior: "smooth", block: "center" });
-            } catch {
-                // ignore
-            }
-        };
-        window.addEventListener("readnlearn:jump-to-phrase", onJump as unknown as () => void);
-        return () =>
-            window.removeEventListener(
-                "readnlearn:jump-to-phrase",
-                onJump as unknown as () => void,
-            );
-    }, [rows]);
+    // Use ref to store current rows to avoid re-registering event listener
+    const rowsRef = useRef(rows);
+    rowsRef.current = rows;
 
     // Filter phrases that are present in the current text
     const filteredRows = React.useMemo(() => {
