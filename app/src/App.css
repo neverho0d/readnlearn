@@ -11,6 +11,7 @@
     --bg-hover: #d7dbdf;
     --overlay-bg: #1a1a1a;
     --overlay-text: #ffffff;
+    --link-blue: #1a73e8; /* Google Search blue for file names */
 }
 
 :root[data-theme="dark"] {
@@ -27,6 +28,7 @@
     --bg-hover: #1f2937;
     --overlay-bg: #000000;
     --overlay-text: #ffffff;
+    --link-blue: #8ab4f8; /* Lighter blue for dark theme */
 }
 
 body {
@@ -169,11 +171,25 @@ button {
 }
 
 /* Local font faces (self-hosted). You can drop TTF/OTF/WOFF2 files in app/assets/fonts */
+
+/* Fallback italic support for fonts without italic variants */
+.italic-fallback {
+    font-style: italic;
+    transform: skewX(-10deg);
+    display: inline-block;
+}
 @font-face {
     font-family: "InterVarLocal";
     src: url("../assets/fonts/Inter-Variable.woff2") format("woff2");
     font-weight: 100 900;
     font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "InterVarLocal";
+    src: url("../assets/fonts/Inter-Variable-Italic.ttf") format("truetype");
+    font-weight: 100 900;
+    font-style: italic;
     font-display: swap;
 }
 @font-face {
@@ -184,6 +200,13 @@ button {
     font-display: swap;
 }
 @font-face {
+    font-family: "SourceSerifLocal";
+    src: url("../assets/fonts/SourceSerifPro-Italic.ttf") format("truetype");
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+@font-face {
     font-family: "MerriweatherLocal";
     src: url("../assets/fonts/Merriweather-Regular.ttf") format("truetype");
     font-weight: 400;
@@ -191,10 +214,24 @@ button {
     font-display: swap;
 }
 @font-face {
+    font-family: "MerriweatherLocal";
+    src: url("../assets/fonts/Merriweather-Italic.ttf") format("truetype");
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+@font-face {
     font-family: "NotoSansLocal";
     src: url("../assets/fonts/NotoSans-Regular.ttf") format("truetype");
     font-weight: 400;
     font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "NotoSansLocal";
+    src: url("../assets/fonts/NotoSans-Italic.ttf") format("truetype");
+    font-weight: 400;
+    font-style: italic;
     font-display: swap;
 }
 
@@ -211,4 +248,14 @@ button {
     font-size: 0.7em;
     margin-left: 2px;
     font-weight: bold;
+}
+
+/* Spinner animation for loading states */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }

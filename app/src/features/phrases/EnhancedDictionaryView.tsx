@@ -13,15 +13,11 @@
  * This component implements the complete Dictionary mode requirements from CURSOR_RULES_REQS.md
  */
 
-import React, { useState, useEffect, useCallback } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEllipsis, faFile } from "@fortawesome/free-solid-svg-icons";
-import { faPenToSquare, faTrashCan } from "@fortawesome/free-regular-svg-icons";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSettings } from "../../lib/settings/SettingsContext";
 import {
     searchPhrases,
     getAllTags,
-    removePhrase,
     PHRASES_UPDATED_EVENT,
     SearchOptions,
     SearchResults,
@@ -30,6 +26,7 @@ import { DictionarySearchBar } from "./DictionarySearchBar";
 import { DictionaryTagsBar } from "./DictionaryTagsBar";
 import { DictionaryStatusBar } from "./DictionaryStatusBar";
 import { DictionaryPager } from "./DictionaryPager";
+import { PhraseListFull } from "./components";
 
 interface EnhancedDictionaryViewProps {
     sourceFile?: string | null;
@@ -66,11 +63,6 @@ export const EnhancedDictionaryView: React.FC<EnhancedDictionaryViewProps> = ({
     const [availableTags, setAvailableTags] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Per-phrase expand/collapse state
-    const [expandedPhrase, setExpandedPhrase] = useState<Record<string, boolean>>({});
-    const [expandedTranslation, setExpandedTranslation] = useState<Record<string, boolean>>({});
-    const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-
     // Update scope when sourceFile changes
     useEffect(() => {
         if (sourceFile) {
@@ -99,7 +91,7 @@ export const EnhancedDictionaryView: React.FC<EnhancedDictionaryViewProps> = ({
         try {
             // If we have cached phrases and no search filters, use cached data for better performance
             if (
-                cachedPhrases.length > 0 &&
+                cachedPhrasesRef.current.length > 0 &&
                 !searchText &&
                 selectedTags.size === 0 &&
                 searchScope === "all"
@@ -198,7 +190,7 @@ export const EnhancedDictionaryView: React.FC<EnhancedDictionaryViewProps> = ({
         sourceFile,
         currentPage,
         itemsPerPage,
-        cachedPhrases,
+        // Removed cachedPhrases to prevent unnecessary re-runs
     ]);
 
     // Trigger search when parameters change
@@ -206,14 +198,22 @@ export const EnhancedDictionaryView: React.FC<EnhancedDictionaryViewProps> = ({
         performSearch();
     }, [performSearch]);
 
-    // Listen for phrase updates
+    // Use ref to store current performSearch function to avoid stale closures
+    const performSearchRef = useRef(performSearch);
+    performSearchRef.current = performSearch;
+
+    // Use ref to store current cachedPhrases to avoid dependency issues
+    const cachedPhrasesRef = useRef(cachedPhrases);
+    cachedPhrasesRef.current = cachedPhrases;
+
+    // Listen for phrase updates (only register once, not on every performSearch change)
     useEffect(() => {
         const handlePhraseUpdate = () => {
-            performSearch();
+            performSearchRef.current();
         };
         window.addEventListener(PHRASES_UPDATED_EVENT, handlePhraseUpdate);
         return () => window.removeEventListener(PHRASES_UPDATED_EVENT, handlePhraseUpdate);
-    }, [performSearch]);
+    }, []); // Empty dependency array - only register once
 
     // Handle tag toggle
     const handleTagToggle = useCallback((tag: string) => {
@@ -239,259 +239,6 @@ export const EnhancedDictionaryView: React.FC<EnhancedDictionaryViewProps> = ({
     const handlePageChange = useCallback((page: number) => {
         setCurrentPage(page);
     }, []);
-
-    // Handle phrase removal
-    const handleRemovePhrase = useCallback(async (phraseId: string) => {
-        if (confirm("Remove this phrase?")) {
-            try {
-                await removePhrase(phraseId);
-                // Search will be refreshed automatically via the PHRASES_UPDATED_EVENT
-            } catch (error) {
-                console.error("Failed to remove phrase:", error);
-            }
-        }
-    }, []);
-
-    // Toggle expand/collapse for phrases and translations
-    const toggleExpand = useCallback(
-        (setMap: React.Dispatch<React.SetStateAction<Record<string, boolean>>>, id: string) => {
-            setMap((prev) => ({ ...prev, [id]: !prev[id] }));
-        },
-        [],
-    );
-
-    // Render phrase card
-    const renderPhraseCard = useCallback(
-        (phrase: {
-            id: string;
-            text: string;
-            translation: string;
-            tags: string[];
-            sourceFile?: string;
-            source_file?: string;
-        }) => {
-            const showFullPhrase = Boolean(expandedPhrase[phrase.id]);
-            const showFullTrans = Boolean(expandedTranslation[phrase.id]);
-            const phraseMarker = phrase.id.substring(0, 4);
-
-            return (
-                <div
-                    key={phrase.id}
-                    style={{
-                        border: "none",
-                        borderRadius: 8,
-                        background: "var(--bg)",
-                        padding: 12,
-                        marginBottom: 8,
-                    }}
-                >
-                    {/* Top: source file and kebab menu */}
-                    <div
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 8,
-                            color: "var(--text-light)",
-                            fontSize: "0.82em",
-                            marginBottom: 6,
-                        }}
-                    >
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <FontAwesomeIcon
-                                icon={faFile}
-                                style={{ color: "var(--muted)", fontSize: 12 }}
-                            />
-                            <span>
-                                {phrase.source_file || phrase.sourceFile || "Unknown source"}
-                            </span>
-                            <span style={{ margin: "0 6px", color: "var(--border)" }}>|</span>
-                            <div style={{ position: "relative" }}>
-                                <button
-                                    onClick={() =>
-                                        setMenuOpenId((prev) =>
-                                            prev === phrase.id ? null : phrase.id,
-                                        )
-                                    }
-                                    style={{
-                                        background: "transparent",
-                                        border: "none",
-                                        boxShadow: "none",
-                                        color: "var(--text-light)",
-                                        cursor: "pointer",
-                                        padding: 4,
-                                        lineHeight: 1,
-                                        borderRadius: 4,
-                                    }}
-                                    aria-label="More actions"
-                                    title="More actions"
-                                    className="icon-button"
-                                >
-                                    <FontAwesomeIcon icon={faEllipsis} />
-                                </button>
-                                {menuOpenId === phrase.id && (
-                                    <div
-                                        style={{
-                                            position: "absolute",
-                                            right: 0,
-                                            top: 22,
-                                            background: "var(--bg)",
-                                            border: "1px solid var(--border)",
-                                            borderRadius: 6,
-                                            boxShadow: "none",
-                                            zIndex: 10,
-                                            minWidth: 140,
-                                            overflow: "hidden",
-                                        }}
-                                        onMouseLeave={() => setMenuOpenId(null)}
-                                    >
-                                        <button
-                                            onClick={() => {
-                                                setMenuOpenId(null);
-                                                console.log("Edit phrase", phrase.id);
-                                            }}
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: 8,
-                                                width: "100%",
-                                                background: "transparent",
-                                                border: "none",
-                                                boxShadow: "none",
-                                                padding: "8px 10px",
-                                                color: "var(--text)",
-                                                cursor: "pointer",
-                                                textAlign: "left",
-                                                transition: "background 0.15s ease",
-                                            }}
-                                            onMouseEnter={(e) =>
-                                                (e.currentTarget.style.background =
-                                                    "var(--bg-hover)")
-                                            }
-                                            onMouseLeave={(e) =>
-                                                (e.currentTarget.style.background = "transparent")
-                                            }
-                                        >
-                                            <FontAwesomeIcon icon={faPenToSquare} />
-                                            <span>Edit</span>
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setMenuOpenId(null);
-                                                void handleRemovePhrase(phrase.id);
-                                            }}
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: 8,
-                                                width: "100%",
-                                                background: "transparent",
-                                                border: "none",
-                                                boxShadow: "none",
-                                                padding: "8px 10px",
-                                                color: "var(--danger)",
-                                                cursor: "pointer",
-                                                textAlign: "left",
-                                                transition: "background 0.15s ease",
-                                            }}
-                                            onMouseEnter={(e) =>
-                                                (e.currentTarget.style.background =
-                                                    "var(--bg-hover)")
-                                            }
-                                            onMouseLeave={(e) =>
-                                                (e.currentTarget.style.background = "transparent")
-                                            }
-                                        >
-                                            <FontAwesomeIcon icon={faTrashCan} />
-                                            <span>Remove</span>
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    {/* Row 1: Phrase */}
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                        <span
-                            style={{
-                                color: "var(--primary)",
-                                fontSize: "0.7em",
-                                marginTop: 2,
-                                cursor: "pointer",
-                            }}
-                            title={phrase.id}
-                        >
-                            {phraseMarker}
-                        </span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                                style={{
-                                    whiteSpace: showFullPhrase ? "normal" : "nowrap",
-                                    overflow: showFullPhrase ? "visible" : "hidden",
-                                    textOverflow: showFullPhrase ? "clip" : "ellipsis",
-                                    maxWidth: "100%",
-                                    wordBreak: showFullPhrase ? "break-word" : undefined,
-                                    cursor: "pointer",
-                                    color: "#4f8cff", // blueish title color like search engines
-                                }}
-                                title={showFullPhrase ? "Click to collapse" : "Click to expand"}
-                                onClick={() => toggleExpand(setExpandedPhrase, phrase.id)}
-                            >
-                                {phrase.text}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Row 2: Translation/Explanation */}
-                    <div
-                        style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 6 }}
-                    >
-                        <span style={{ width: 24, color: "var(--muted)", fontSize: 12 }}>✎</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                                style={{
-                                    whiteSpace: showFullTrans ? "normal" : "nowrap",
-                                    overflow: showFullTrans ? "visible" : "hidden",
-                                    textOverflow: showFullTrans ? "clip" : "ellipsis",
-                                    maxWidth: "100%",
-                                    wordBreak: showFullTrans ? "break-word" : undefined,
-                                    color: "var(--text)",
-                                    cursor: "pointer",
-                                    fontSize: "0.88em",
-                                }}
-                                title={showFullTrans ? "Click to collapse" : "Click to expand"}
-                                onClick={() => toggleExpand(setExpandedTranslation, phrase.id)}
-                            >
-                                {phrase.translation || "—"}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Row 3: Tags */}
-                    {phrase.tags && phrase.tags.length > 0 && (
-                        <div
-                            style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 8,
-                                marginTop: 6,
-                            }}
-                        >
-                            <span style={{ width: 24, color: "var(--muted)", fontSize: 12 }}>
-                                #
-                            </span>
-                            <div style={{ flex: 1, color: "#7dd3fc", fontSize: "0.92em" }}>
-                                {`#${phrase.tags.join(", #")}`}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bottom action row removed; actions moved to kebab menu */}
-                </div>
-            );
-        },
-        [expandedPhrase, expandedTranslation, toggleExpand, handleRemovePhrase, menuOpenId],
-    );
 
     return (
         <div
@@ -565,9 +312,13 @@ export const EnhancedDictionaryView: React.FC<EnhancedDictionaryViewProps> = ({
                         )}
                     </div>
                 ) : (
-                    <div style={{ padding: "8px 0" }}>
-                        {searchResults.phrases.map(renderPhraseCard)}
-                    </div>
+                    <PhraseListFull
+                        phrases={searchResults.phrases}
+                        loading={loading}
+                        onEdit={(phraseId) => {
+                            console.log("Edit phrase", phraseId);
+                        }}
+                    />
                 )}
             </div>
 

@@ -46,6 +46,7 @@ export interface SavedPhrase {
     lang: string; // L2 language code (e.g., "es", "fr")
     text: string; // The actual phrase text
     translation: string; // Translation or explanation
+    explanation?: string; // Detailed explanation from LLM
     context: string; // Surrounding context sentence
     tags: string[]; // User-defined tags for categorization
     addedAt: string; // ISO timestamp of when phrase was added
@@ -64,6 +65,7 @@ export interface SavedPhrase {
  * Used to notify components when phrase data changes.
  */
 export const PHRASES_UPDATED_EVENT = "readnlearn:phrases-updated";
+export const PHRASE_TRANSLATED_EVENT = "readnlearn:phrase-translated";
 
 /**
  * Content Hash Generation
@@ -85,6 +87,57 @@ export function generateContentHash(content: string): string {
         hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash).toString(36);
+}
+
+/**
+ * Update phrase translation/explanation and emit events
+ */
+export async function updatePhraseTranslation(
+    phraseId: string,
+    translation: string,
+    explanation?: string,
+): Promise<void> {
+    await ensureDb();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const updatePayload: Record<string, unknown> = {
+        translation: translation || "",
+        explanation: explanation || "",
+        updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+        .from("phrases")
+        .update(updatePayload)
+        .eq("id", phraseId)
+        .eq("user_id", user.id);
+    if (error) console.warn("Supabase updatePhraseTranslation error:", error);
+
+    // Update local cache
+    try {
+        const allPhrases = await cache.getPhrases(user.id);
+        const phraseIndex = allPhrases.findIndex((p) => p.id === phraseId);
+        if (phraseIndex >= 0) {
+            allPhrases[phraseIndex] = {
+                ...allPhrases[phraseIndex],
+                translation: translation || "",
+                explanation: explanation || "",
+            };
+            await cache.updatePhrases(allPhrases);
+        }
+    } catch (cacheError) {
+        console.warn("Failed to update cache after translation:", cacheError);
+    }
+
+    try {
+        window.dispatchEvent(new CustomEvent(PHRASE_TRANSLATED_EVENT));
+        window.dispatchEvent(new CustomEvent(PHRASES_UPDATED_EVENT));
+    } catch {
+        // ignore dispatch errors outside browser
+    }
 }
 
 /**
@@ -186,6 +239,7 @@ export async function loadAllPhrases(): Promise<SavedPhrase[]> {
             lang: phrase.lang,
             text: phrase.text,
             translation: phrase.translation,
+            explanation: phrase.explanation,
             context: phrase.context,
             tags: phrase.tags || [],
             addedAt: phrase.added_at,
@@ -251,6 +305,7 @@ export async function loadPhrasesBySource(sourceFile: string): Promise<SavedPhra
             lang: phrase.lang,
             text: phrase.text,
             translation: phrase.translation,
+            explanation: phrase.explanation,
             context: phrase.context,
             tags: phrase.tags || [],
             addedAt: phrase.added_at,
@@ -308,6 +363,7 @@ export async function loadPhrasesByContentHash(contentHash: string): Promise<Sav
             lang: phrase.lang,
             text: phrase.text,
             translation: phrase.translation,
+            explanation: phrase.explanation,
             context: phrase.context,
             tags: phrase.tags || [],
             addedAt: phrase.added_at,

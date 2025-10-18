@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { useSettings, LANGUAGES } from "../../lib/settings/SettingsContext";
+import { useSettings, LANGUAGES, LEARNING_DIFFICULTIES } from "../../lib/settings/SettingsContext";
 import { useI18n } from "../../lib/i18n/I18nContext";
 import "./LanguageSettings.css";
 import { useTheme } from "../../lib/settings/ThemeContext";
@@ -38,6 +38,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
     } = useLanguageDetection();
 
     const [showProviderSettings, setShowProviderSettings] = React.useState(false);
+    const [showDifficultiesDialog, setShowDifficultiesDialog] = React.useState(false);
 
     // Trigger language detection for existing text when component mounts
     React.useEffect(() => {
@@ -510,6 +511,31 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     </button>
                 )}
 
+                {/* Learning preferences */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <label style={{ color: "#a0aec0", fontSize: 12 }}>Level</label>
+                    <select
+                        value={settings.userLevel}
+                        onChange={(e) => updateSettings({ userLevel: e.target.value as any })}
+                        style={{
+                            background: "#1f2937",
+                            color: "#e5e7eb",
+                            border: "1px solid #374151",
+                            borderRadius: 4,
+                            padding: "4px 8px",
+                            fontSize: 12,
+                        }}
+                        title="Your comprehension level"
+                    >
+                        <option value="A1">A1 (Beginner)</option>
+                        <option value="A2">A2 (Elementary)</option>
+                        <option value="B1">B1 (Intermediate)</option>
+                        <option value="B2">B2 (Upper Intermediate)</option>
+                        <option value="C1">C1 (Advanced)</option>
+                        <option value="C2">C2 (Proficient)</option>
+                    </select>
+                </div>
+
                 {/* Theme switch */}
                 <button
                     onClick={toggleTheme}
@@ -527,7 +553,24 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     {theme === "dark" ? t.light : t.dark}
                 </button>
             </div>
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {/* Difficulties button */}
+                <button
+                    onClick={() => setShowDifficultiesDialog(true)}
+                    style={{
+                        backgroundColor: "transparent",
+                        color: "var(--topbar-text)",
+                        border: "1px solid rgba(255,255,255,0.18)",
+                        borderRadius: "4px",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                    }}
+                    title="Learning difficulties"
+                >
+                    Difficulties
+                </button>
+
                 <button
                     className="icon-button"
                     title="Provider settings"
@@ -539,6 +582,15 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                 {showProviderSettings && (
                     <ProviderSettingsDialog onClose={() => setShowProviderSettings(false)} />
                 )}
+                {showDifficultiesDialog && (
+                    <DifficultiesDialog
+                        onClose={() => setShowDifficultiesDialog(false)}
+                        difficulties={settings.userDifficulties}
+                        onUpdate={(difficulties) =>
+                            updateSettings({ userDifficulties: difficulties })
+                        }
+                    />
+                )}
             </div>
             {/* hidden file input */}
             <input
@@ -548,6 +600,147 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                 onChange={handleFileChange}
                 style={{ display: "none" }}
             />
+        </div>
+    );
+};
+
+// Difficulties Dialog Component
+interface DifficultiesDialogProps {
+    onClose: () => void;
+    difficulties: string[];
+    onUpdate: (difficulties: string[]) => void;
+}
+
+const DifficultiesDialog: React.FC<DifficultiesDialogProps> = ({
+    onClose,
+    difficulties,
+    onUpdate,
+}) => {
+    const [selectedDifficulties, setSelectedDifficulties] = React.useState<string[]>(difficulties);
+
+    const handleToggle = (difficulty: string) => {
+        setSelectedDifficulties((prev) =>
+            prev.includes(difficulty)
+                ? prev.filter((d) => d !== difficulty)
+                : [...prev, difficulty],
+        );
+    };
+
+    const handleSave = () => {
+        onUpdate(selectedDifficulties);
+        onClose();
+    };
+
+    return (
+        <div
+            style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                zIndex: 3000,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+            }}
+            onClick={onClose}
+        >
+            <div
+                style={{
+                    backgroundColor: "var(--panel)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    padding: "24px",
+                    maxWidth: "600px",
+                    maxHeight: "80vh",
+                    overflow: "auto",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <h3 style={{ margin: "0 0 16px 0", color: "var(--text)" }}>
+                    Learning Difficulties
+                </h3>
+                <p
+                    style={{
+                        margin: "0 0 20px 0",
+                        color: "var(--text-secondary)",
+                        fontSize: "14px",
+                    }}
+                >
+                    Select the areas where you typically have difficulties. This helps provide more
+                    targeted explanations.
+                </p>
+
+                <div style={{ display: "grid", gap: "12px", marginBottom: "20px" }}>
+                    {LEARNING_DIFFICULTIES.map((difficulty) => (
+                        <label
+                            key={difficulty.label}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                cursor: "pointer",
+                                padding: "8px",
+                                borderRadius: "4px",
+                                backgroundColor: selectedDifficulties.includes(difficulty.label)
+                                    ? "var(--primary-light)"
+                                    : "transparent",
+                            }}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selectedDifficulties.includes(difficulty.label)}
+                                onChange={() => handleToggle(difficulty.label)}
+                                style={{ margin: 0 }}
+                            />
+                            <span style={{ color: "var(--text)", fontSize: "14px" }}>
+                                {difficulty.label}
+                                <div
+                                    style={{
+                                        color: "var(--muted)",
+                                        fontSize: "12px",
+                                        marginTop: 2,
+                                    }}
+                                >
+                                    {difficulty.note}
+                                </div>
+                            </span>
+                        </label>
+                    ))}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            padding: "8px 16px",
+                            backgroundColor: "transparent",
+                            color: "var(--text)",
+                            border: "1px solid var(--border)",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        style={{
+                            padding: "8px 16px",
+                            backgroundColor: "var(--primary)",
+                            color: "var(--primary-contrast)",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        Save
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

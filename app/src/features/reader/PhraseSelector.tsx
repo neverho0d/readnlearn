@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useI18n } from "../../lib/i18n/I18nContext";
 
 interface PhraseSelectorProps {
@@ -17,10 +17,6 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
 }) => {
     const { t } = useI18n();
     const phrase = selectedText;
-    const translation = useMemo(
-        () => (phrase ? `example translation of "${phrase}"` : "—"),
-        [phrase],
-    );
     const [tags, setTags] = useState<string>(suggestedTags.join(", "));
 
     const handleSavePhrase = () => {
@@ -31,7 +27,7 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
             .split(",")
             .map((s) => s.trim())
             .filter((s) => s.length > 0);
-        onPhraseSelect({ phrase, tags: parsedTags, translation });
+        onPhraseSelect({ phrase, tags: parsedTags, translation: "" });
         setTags("");
         onClear();
     };
@@ -66,37 +62,6 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
                         }}
                     >
                         {phrase || "—"}
-                    </div>
-
-                    {/* Translation (read-only display; stubbed for now) */}
-                    <div>
-                        <label
-                            style={{
-                                display: "block",
-                                fontSize: "14px",
-                                fontWeight: 500,
-                                marginBottom: "4px",
-                                textTransform: "lowercase",
-                            }}
-                        >
-                            translation:
-                        </label>
-                        <div
-                            style={{
-                                width: "100%",
-                                padding: "4px 0",
-                                border: "none",
-                                fontSize: "14px",
-                                background: "transparent",
-                                color: "var(--text)",
-                                minHeight: "20px",
-                                whiteSpace: "pre-wrap",
-                                overflowWrap: "anywhere",
-                                boxSizing: "border-box",
-                            }}
-                        >
-                            {translation || "—"}
-                        </div>
                     </div>
 
                     {/* Tags (editable, comma-separated) */}

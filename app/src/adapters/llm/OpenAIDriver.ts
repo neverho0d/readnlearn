@@ -6,6 +6,7 @@
  */
 
 import OpenAI from "openai";
+import { invoke as tauriInvoke, isTauri as tauriIsTauri } from "@tauri-apps/api/core";
 import {
     ProviderConfig,
     ProviderResponse,
@@ -166,8 +167,10 @@ export class OpenAIDriver implements LlmDriver {
                 includeGlosses: true,
             });
 
-            const response = await this.callWithRetry(async () => {
-                return await this.client.chat.completions.create({
+            let result: StoryResult;
+            let tokens = 0;
+            if (tauriIsTauri()) {
+                const body = JSON.stringify({
                     model: this.model,
                     messages: [
                         {
@@ -175,22 +178,44 @@ export class OpenAIDriver implements LlmDriver {
                             content:
                                 "You are an expert language learning tutor. Always respond with valid JSON in the exact format requested.",
                         },
-                        {
-                            role: "user",
-                            content: prompt,
-                        },
+                        { role: "user", content: prompt },
                     ],
                     temperature: 0.7,
                     max_tokens: 1000,
                 });
-            });
-
-            const content = response.choices[0]?.message?.content;
-            if (!content) {
-                throw new Error("No content in OpenAI response");
+                const raw = await tauriInvoke<string>("openai_proxy", {
+                    apiKey: this.config.apiKey,
+                    baseUrl: this.config.baseUrl,
+                    method: "POST",
+                    path: "/v1/chat/completions",
+                    body,
+                });
+                const json = JSON.parse(raw);
+                const content = json?.choices?.[0]?.message?.content as string | undefined;
+                if (!content) throw new Error("No content in OpenAI response");
+                result = this.parseJsonResponse<StoryResult>(content);
+                tokens = json?.usage?.total_tokens || 0;
+            } else {
+                const response = await this.callWithRetry(async () => {
+                    return await this.client.chat.completions.create({
+                        model: this.model,
+                        messages: [
+                            {
+                                role: "system",
+                                content:
+                                    "You are an expert language learning tutor. Always respond with valid JSON in the exact format requested.",
+                            },
+                            { role: "user", content: prompt },
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000,
+                    });
+                });
+                const content = response.choices[0]?.message?.content;
+                if (!content) throw new Error("No content in OpenAI response");
+                result = this.parseJsonResponse<StoryResult>(content);
+                tokens = response.usage?.total_tokens || 0;
             }
-
-            const result = this.parseJsonResponse<StoryResult>(content);
 
             // Cache the result
             if (this.config.cache !== false) {
@@ -198,7 +223,6 @@ export class OpenAIDriver implements LlmDriver {
             }
 
             const latency = Date.now() - startTime;
-            const tokens = response.usage?.total_tokens || 0;
             const cost = this.calculateCost(tokens);
 
             return {
@@ -259,8 +283,10 @@ export class OpenAIDriver implements LlmDriver {
                 exerciseCount: count,
             });
 
-            const response = await this.callWithRetry(async () => {
-                return await this.client.chat.completions.create({
+            let result: ClozeResult[];
+            let tokens = 0;
+            if (tauriIsTauri()) {
+                const body = JSON.stringify({
                     model: this.model,
                     messages: [
                         {
@@ -268,22 +294,44 @@ export class OpenAIDriver implements LlmDriver {
                             content:
                                 "You are an expert language learning tutor. Always respond with valid JSON in the exact format requested.",
                         },
-                        {
-                            role: "user",
-                            content: prompt,
-                        },
+                        { role: "user", content: prompt },
                     ],
                     temperature: 0.7,
                     max_tokens: 800,
                 });
-            });
-
-            const content = response.choices[0]?.message?.content;
-            if (!content) {
-                throw new Error("No content in OpenAI response");
+                const raw = await tauriInvoke<string>("openai_proxy", {
+                    apiKey: this.config.apiKey,
+                    baseUrl: this.config.baseUrl,
+                    method: "POST",
+                    path: "/v1/chat/completions",
+                    body,
+                });
+                const json = JSON.parse(raw);
+                const content = json?.choices?.[0]?.message?.content as string | undefined;
+                if (!content) throw new Error("No content in OpenAI response");
+                result = this.parseJsonResponse<ClozeResult[]>(content);
+                tokens = json?.usage?.total_tokens || 0;
+            } else {
+                const response = await this.callWithRetry(async () => {
+                    return await this.client.chat.completions.create({
+                        model: this.model,
+                        messages: [
+                            {
+                                role: "system",
+                                content:
+                                    "You are an expert language learning tutor. Always respond with valid JSON in the exact format requested.",
+                            },
+                            { role: "user", content: prompt },
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 800,
+                    });
+                });
+                const content = response.choices[0]?.message?.content;
+                if (!content) throw new Error("No content in OpenAI response");
+                result = this.parseJsonResponse<ClozeResult[]>(content);
+                tokens = response.usage?.total_tokens || 0;
             }
-
-            const result = this.parseJsonResponse<ClozeResult[]>(content);
 
             // Cache the result
             if (this.config.cache !== false) {
@@ -291,7 +339,6 @@ export class OpenAIDriver implements LlmDriver {
             }
 
             const latency = Date.now() - startTime;
-            const tokens = response.usage?.total_tokens || 0;
             const cost = this.calculateCost(tokens);
 
             return {

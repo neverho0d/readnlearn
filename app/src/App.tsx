@@ -16,6 +16,7 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useSettings } from "./lib/settings/SettingsContext";
 import { SettingsProvider } from "./lib/settings/SettingsContext";
 import { I18nProvider } from "./lib/i18n/I18nContext";
 import { ThemeProvider } from "./lib/settings/ThemeContext";
@@ -23,9 +24,8 @@ import { AuthProvider, useAuth } from "./lib/auth/AuthContext";
 import { LanguageSettings } from "./features/settings/LanguageSettings";
 import { TextReader } from "./features/reader/TextReader";
 import "./App.css";
-import { DictionaryView } from "./features/phrases/DictionaryView";
+import { PhraseListView } from "./features/phrases/components";
 import { EnhancedDictionaryView } from "./features/phrases/EnhancedDictionaryView";
-import { PHRASES_UPDATED_EVENT } from "./lib/db/phraseStore";
 import { useAppMode } from "./lib/state/appMode";
 import { generateContentHash } from "./lib/db/phraseStore";
 import { AuthScreen } from "./features/auth/AuthScreen";
@@ -253,23 +253,8 @@ function MainAppContent() {
         loadSavedPhrases();
     }, [loadSavedPhrases]);
 
-    // Listen for phrase updates to refresh the phrase list
-    useEffect(() => {
-        const handlePhrasesUpdated = () => {
-            console.log("🔄 PHRASES_UPDATED_EVENT received, reloading phrases...");
-            // Add a small delay to ensure the database has been updated
-            setTimeout(() => {
-                loadSavedPhrases();
-            }, 100);
-        };
-
-        console.log("🎧 Setting up PHRASES_UPDATED_EVENT listener");
-        window.addEventListener(PHRASES_UPDATED_EVENT, handlePhrasesUpdated);
-        return () => {
-            console.log("🧹 Cleaning up PHRASES_UPDATED_EVENT listener");
-            window.removeEventListener(PHRASES_UPDATED_EVENT, handlePhrasesUpdated);
-        };
-    }, [loadSavedPhrases]);
+    // Note: DictionaryView handles its own phrase refresh via PHRASES_UPDATED_EVENT
+    // No need for App.tsx to also listen to this event
 
     /**
      * Detects which phrases are currently visible in the main text area
@@ -427,18 +412,7 @@ function MainAppContent() {
      * Handles closing the current file
      * Clears the loaded file and resets to initial state
      */
-    const handleCloseFile = () => {
-        setExternalText(null);
-        setSourceFile(null);
-        setFileFormat("text");
-        // Clear saved phrases for the closed file
-        setSavedPhrases([]);
-        // Clear scroll position
-        localStorage.removeItem("readnlearn-scroll-position");
-        // Clear last file name and format
-        localStorage.removeItem("readnlearn-last-file-name");
-        localStorage.removeItem("readnlearn-last-file-format");
-    };
+    // close-file handler existed but was unused; removed to satisfy linter
 
     return (
         <SettingsProvider>
@@ -668,7 +642,7 @@ function MainContent(props: {
         // Migration removed - using pure SQLite database
         const handlePhraseUpdate = () => {
             void loadSavedPhrases();
-            void loadAllPhrases();
+            // Do not reload all phrases here to avoid duplicate refresh and flicker.
         };
 
         window.addEventListener("readnlearn:phrases-updated", handlePhraseUpdate);
@@ -687,14 +661,7 @@ function MainContent(props: {
         }
     }, [mode, loadAllPhrases]);
 
-    // Listen for phrase updates
-    React.useEffect(() => {
-        const handler = () => {
-            void loadSavedPhrases();
-        };
-        window.addEventListener(PHRASES_UPDATED_EVENT, handler);
-        return () => window.removeEventListener(PHRASES_UPDATED_EVENT, handler);
-    }, [loadSavedPhrases]);
+    // Listen for phrase updates (single handler defined above already handles this)
 
     // Debug logging for currentText changes
     // React.useEffect(() => {
@@ -848,7 +815,7 @@ function MainContent(props: {
                                 height="12"
                                 viewBox="0 0 320 512"
                                 style={{ display: phrasesCollapsed ? "none" : "block" }}
-                            >Diego turned off the highway onto the road that led between the fields of almond trees
+                            >
                                 <path
                                     fill="currentColor"
                                     d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"
@@ -890,7 +857,7 @@ function MainContent(props: {
                                 overflow: "auto",
                             }}
                         >
-                            <DictionaryView
+                            <PhraseListView
                                 filterText={currentText}
                                 showAllPhrases={false}
                                 savedPhrases={savedPhrases}
@@ -999,7 +966,7 @@ function ProviderSettingsButton() {
 }
 
 function ProviderSettingsDialog({ onClose }: { onClose: () => void }) {
-    const { settings, updateSettings } = require("./lib/settings/SettingsContext").useSettings();
+    const { settings, updateSettings } = useSettings();
     const [form, setForm] = React.useState({
         openaiApiKey: settings.openaiApiKey || "",
         openaiBaseUrl: settings.openaiBaseUrl || "",

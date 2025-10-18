@@ -17,6 +17,7 @@ import {
     createCacheKey,
 } from "../base/types";
 import { providerCache } from "../base/cache";
+import { invoke as tauriInvoke, isTauri as tauriIsTauri } from "@tauri-apps/api/core";
 
 export interface TranslationResult {
     translation: string;
@@ -110,32 +111,51 @@ export class GoogleDriver implements MtDriver {
         }
 
         try {
-            const response = await this.callWithRetry(async () => {
-                const params = new URLSearchParams({
-                    q: text,
-                    source: from,
-                    target: to,
-                    key: this.config.apiKey,
-                    format: "text",
+            let result: TranslationResult;
+
+            if (tauriIsTauri()) {
+                const body: Record<string, unknown> = { q: text, target: to };
+                if (from && from !== "auto") body.source = from;
+
+                const raw = await tauriInvoke<string>("google_proxy", {
+                    apiKey: this.config.apiKey,
+                    baseUrl: this.config.baseUrl,
+                    method: "POST",
+                    path: "/language/translate/v2",
+                    body: JSON.stringify(body),
+                });
+                const data = JSON.parse(raw);
+                result = {
+                    translation: data?.data?.translations?.[0]?.translatedText || "",
+                    detectedLanguage: data?.data?.translations?.[0]?.detectedSourceLanguage,
+                    confidence: 1.0,
+                };
+            } else {
+                const response = await this.callWithRetry(async () => {
+                    const params = new URLSearchParams({
+                        q: text,
+                        source: from,
+                        target: to,
+                        key: this.config.apiKey,
+                        format: "text",
+                    });
+
+                    return await fetch(`${this.baseUrl}?${params}`, { method: "GET" });
                 });
 
-                return await fetch(`${this.baseUrl}?${params}`, {
-                    method: "GET",
-                });
-            });
+                if (!response.ok) {
+                    throw new Error(
+                        `Google Translate failed: ${response.status} ${response.statusText}`,
+                    );
+                }
 
-            if (!response.ok) {
-                throw new Error(
-                    `Google Translate failed: ${response.status} ${response.statusText}`,
-                );
+                const data = await response.json();
+                result = {
+                    translation: data.data.translations[0]?.translatedText || "",
+                    detectedLanguage: data.data.translations[0]?.detectedSourceLanguage,
+                    confidence: 1.0,
+                };
             }
-
-            const data = await response.json();
-            const result: TranslationResult = {
-                translation: data.data.translations[0]?.translatedText || "",
-                detectedLanguage: data.data.translations[0]?.detectedSourceLanguage,
-                confidence: 1.0, // Google doesn't provide confidence scores in basic API
-            };
 
             // Cache the result
             if (this.config.cache !== false) {

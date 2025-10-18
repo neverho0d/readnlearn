@@ -32,6 +32,9 @@ interface SettingsState {
     font: string; // UI and reading font family
     fontSize: number; // Base font size in pixels
     theme: string; // Theme preference (dark/light)
+    // Learning preferences
+    userLevel: "A1" | "A2" | "B1" | "B2" | "C1" | "C2"; // User's comprehension level
+    userDifficulties: string[]; // Selected difficulties for explanation
     // Provider API keys and optional base URLs
     openaiApiKey?: string;
     openaiBaseUrl?: string;
@@ -72,6 +75,8 @@ const DEFAULT_SETTINGS: SettingsState = {
     font: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif",
     fontSize: 16, // 16px base font size
     theme: "dark", // Default to dark theme
+    userLevel: "A2", // Default to A2 level
+    userDifficulties: ["Tense and Aspect", "Prepositions", "Gender and Agreement"], // Default difficulties
     dailyCapOpenAI: 5,
     dailyCapDeepL: 2,
     dailyCapGoogle: 2,
@@ -93,6 +98,51 @@ const LANGUAGES: { code: string; name: string; nativeName: string }[] = [
     { code: "de", name: "German", nativeName: "Deutsch" },
     { code: "it", name: "Italian", nativeName: "Italiano" },
     { code: "pt", name: "Portuguese", nativeName: "Português" },
+];
+
+/**
+ * Available Learning Difficulties
+ *
+ * List of difficulties that users can select to help with explanations.
+ * Based on the translation_prompt rule.
+ */
+export const LEARNING_DIFFICULTIES: Array<{ label: string; note: string }> = [
+    // Phonology and Pronunciation
+    { label: "Producing New Sounds", note: "Sounds not present in L1 (e.g., rolled R, tones)." },
+    { label: "Intonation and Rhythm", note: "Stress patterns and musicality feel unnatural." },
+    {
+        label: "Minimal Pairs Discrimination",
+        note: "Hard to distinguish words differing by one sound.",
+    },
+    // Grammar and Syntax
+    {
+        label: "Tense and Aspect",
+        note: "Choosing correct verb forms (e.g., ser/estar; perfect vs simple past).",
+    },
+    {
+        label: "Gender and Agreement",
+        note: "Remembering noun gender and adjective/article agreement.",
+    },
+    { label: "Word Order (Syntax)", note: "Applying L1 word order causing awkward phrasing." },
+    { label: "Prepositions", note: "Selecting correct preposition where mapping isn't 1:1." },
+    // Vocabulary and Semantics
+    { label: "Limited Lexicon", note: "Insufficient vocabulary for precise expression." },
+    {
+        label: "False Cognates (False Friends)",
+        note: "Similar-looking words with different meanings (e.g., embarazada).",
+    },
+    {
+        label: "Idioms and Slang",
+        note: "Understanding non-literal, culturally specific expressions.",
+    },
+    { label: "Collocations", note: "Knowing natural word pairings (e.g., make a decision)." },
+    // Listening and Comprehension
+    { label: "Speed of Speech", note: "Processing native-speed speech; missing info." },
+    {
+        label: "Connected Speech",
+        note: "Segmenting words when speech runs together (e.g., gonna).",
+    },
+    { label: "Regional Accents", note: "Understanding varied dialects and accents." },
 ];
 
 /**
@@ -131,49 +181,52 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 } = await supabase.auth.getUser();
                 if (user) {
                     try {
-                        const { data: userSettings, error } = await supabase
+                        const { data: kvRow, error } = await supabase
                             .from("user_settings")
-                            .select("*")
+                            .select("value")
                             .eq("user_id", user.id)
+                            .eq("key", "settings")
                             .single();
 
-                        if (!error && userSettings) {
-                            // Merge any locally stored provider keys since Supabase table may not have these columns yet
-                            let localProviderKeys: Partial<SettingsState> = {};
-                            try {
-                                const rawLocal = localStorage.getItem("readnlearn-settings");
-                                if (rawLocal) {
-                                    const parsed = JSON.parse(rawLocal);
-                                    localProviderKeys = {
-                                        openaiApiKey: parsed.openaiApiKey,
-                                        openaiBaseUrl: parsed.openaiBaseUrl,
-                                        deeplApiKey: parsed.deeplApiKey,
-                                        deeplBaseUrl: parsed.deeplBaseUrl,
-                                        googleApiKey: parsed.googleApiKey,
-                                        googleBaseUrl: parsed.googleBaseUrl,
-                                        dailyCapOpenAI: parsed.dailyCapOpenAI,
-                                        dailyCapDeepL: parsed.dailyCapDeepL,
-                                        dailyCapGoogle: parsed.dailyCapGoogle,
-                                    };
-                                }
-                            } catch {}
+                        // Merge any locally stored provider keys (keys, caps) regardless of KV state
+                        let localProviderKeys: Partial<SettingsState> = {};
+                        try {
+                            const rawLocal = localStorage.getItem("readnlearn-settings");
+                            if (rawLocal) {
+                                const parsed = JSON.parse(rawLocal);
+                                localProviderKeys = {
+                                    openaiApiKey: parsed.openaiApiKey,
+                                    openaiBaseUrl: parsed.openaiBaseUrl,
+                                    deeplApiKey: parsed.deeplApiKey,
+                                    deeplBaseUrl: parsed.deeplBaseUrl,
+                                    googleApiKey: parsed.googleApiKey,
+                                    googleBaseUrl: parsed.googleBaseUrl,
+                                    dailyCapOpenAI: parsed.dailyCapOpenAI,
+                                    dailyCapDeepL: parsed.dailyCapDeepL,
+                                    dailyCapGoogle: parsed.dailyCapGoogle,
+                                };
+                            }
+                        } catch (error) {
+                            console.log("Error parsing local settings:", error);
+                        }
 
-                            setSettings({
-                                l1: userSettings.l1,
-                                l2: userSettings.l2,
-                                l2AutoDetect: userSettings.l2_auto_detect,
-                                font: userSettings.font || DEFAULT_SETTINGS.font,
-                                fontSize: userSettings.font_size,
-                                theme: userSettings.theme,
-                                // Provider keys and spending caps from local storage
-                                ...localProviderKeys,
-                            });
+                        if (!error && kvRow && kvRow.value) {
+                            const remote = kvRow.value as Partial<SettingsState>;
+                            setSettings({ ...DEFAULT_SETTINGS, ...remote, ...localProviderKeys });
                             setLoading(false);
                             return;
                         } else if (error) {
-                            console.log("Supabase settings error (table may not exist):", error);
+                            console.log(
+                                "Supabase settings KV error (row may not exist yet):",
+                                error,
+                            );
                         }
-                    } catch (supabaseError) {}
+                    } catch (supabaseError) {
+                        console.log(
+                            "Supabase settings KV error (row may not exist yet):",
+                            supabaseError,
+                        );
+                    }
                 }
 
                 // Fallback to localStorage
@@ -183,7 +236,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         const localSettings = JSON.parse(raw);
                         setSettings({ ...DEFAULT_SETTINGS, ...localSettings });
                     }
-                } catch {}
+                } catch (error) {
+                    console.log("Error parsing local settings:", error);
+                }
             } catch (error) {
                 console.error("Failed to load settings:", error);
             } finally {
@@ -205,20 +260,26 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 // Save to localStorage as backup (includes caps and provider keys)
                 localStorage.setItem("readnlearn-settings", JSON.stringify(settings));
 
-                // Save core UI settings to Supabase (no caps or provider keys)
+                // Save core UI settings to Supabase KV (no caps or provider keys)
                 const {
                     data: { user },
                 } = await supabase.auth.getUser();
                 if (user) {
                     try {
-                        await supabase.from("user_settings").upsert({
-                            user_id: user.id,
+                        const value = {
                             l1: settings.l1,
                             l2: settings.l2,
-                            l2_auto_detect: settings.l2AutoDetect,
+                            l2AutoDetect: settings.l2AutoDetect,
                             font: settings.font,
-                            font_size: settings.fontSize,
+                            fontSize: settings.fontSize,
                             theme: settings.theme,
+                            userLevel: settings.userLevel,
+                            userDifficulties: settings.userDifficulties,
+                        };
+                        await supabase.from("user_settings").upsert({
+                            user_id: user.id,
+                            key: "settings",
+                            value,
                             updated_at: new Date().toISOString(),
                         });
                     } catch (supabaseError) {

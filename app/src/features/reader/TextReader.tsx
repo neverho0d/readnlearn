@@ -4,6 +4,7 @@ import { useSettings } from "../../lib/settings/SettingsContext";
 import { ContentRenderer } from "./ContentRenderer";
 import { PhraseSelector } from "./PhraseSelector";
 import { savePhrase, generateContentHash } from "../../lib/db/phraseStore";
+import { queueTranslate } from "../../lib/phrases/mtQueue";
 
 /**
  * Find phrase in text using flexible whitespace regex matching
@@ -498,7 +499,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
         // Cleanup tags: strip leading '#'
         const cleanedTags = (payload.tags || []).map((t) => t.replace(/^#+/u, ""));
 
-        await savePhrase({
+        const saved = await savePhrase({
             lang: settings.l2AutoDetect ? "es" : settings.l2,
             text: payload.phrase,
             translation: payload.translation,
@@ -510,6 +511,21 @@ export const TextReader: React.FC<TextReaderProps> = ({
             lineNo,
             colOffset,
         });
+
+        // Enqueue background translation using LLM with context
+        try {
+            await queueTranslate({
+                phraseId: saved.id,
+                text: payload.phrase,
+                context: context,
+                l1: settings.l1,
+                l2: settings.l2,
+                level: settings.userLevel || "A2",
+                difficulties: settings.userDifficulties || [],
+            });
+        } catch {
+            // non-blocking
+        }
 
         // Debug logging
         // if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development") {
@@ -534,9 +550,47 @@ export const TextReader: React.FC<TextReaderProps> = ({
     const getContextAroundPhrase = (phrase: string, fullText: string): string => {
         const phraseIndex = fullText.indexOf(phrase);
         if (phraseIndex === -1) return "";
-        const start = Math.max(0, phraseIndex - 50);
-        const end = Math.min(fullText.length, phraseIndex + phrase.length + 50);
-        return fullText.substring(start, end);
+
+        // Get up to 1000 characters before and after, respecting sentence boundaries
+        const beforeStart = Math.max(0, phraseIndex - 1000);
+        const afterEnd = Math.min(fullText.length, phraseIndex + phrase.length + 1000);
+
+        // Helper to check if char is a sentence terminator
+        const isTerminator = (ch: string) =>
+            ch === "." || ch === "!" || ch === "?" || ch === "…" || ch === "\n";
+
+        // Start boundary: choose the FIRST sentence boundary inside the window
+        // so that we include as many complete sentences as possible before the phrase
+        let contextStart = beforeStart;
+        for (let i = beforeStart; i < phraseIndex; i++) {
+            if (isTerminator(fullText[i])) {
+                contextStart = i + 1;
+                // do not break; keep earliest boundary found (first inside window)
+                break;
+            }
+        }
+
+        // End boundary: choose the LAST sentence boundary inside the window after the phrase
+        // so that we include as many complete sentences as possible after the phrase
+        let contextEnd = afterEnd;
+        for (let i = afterEnd - 1; i >= phraseIndex + phrase.length; i--) {
+            if (isTerminator(fullText[i])) {
+                contextEnd = i + 1;
+                break;
+            }
+        }
+
+        const context = fullText.substring(contextStart, contextEnd).trim();
+        console.log("Context extraction:", {
+            phrase: phrase,
+            phraseIndex: phraseIndex,
+            beforeStart: beforeStart,
+            afterEnd: afterEnd,
+            contextStart: contextStart,
+            contextEnd: contextEnd,
+            context: context,
+        });
+        return context;
     };
 
     // Render text with visual decorations for saved phrases

@@ -46,9 +46,12 @@ export const PhraseList: React.FC<DictionaryViewProps> = ({
     const { settings } = useSettings();
     const [rows, setRows] = React.useState<PhraseRow[]>([]);
     const [loading, setLoading] = React.useState(true);
-    // Per-phrase expand/collapse state for phrase and translation (must be declared before any early returns)
+    // Per-phrase expand/collapse state for phrase, translation, and explanation (must be declared before any early returns)
     const [expandedPhrase, setExpandedPhrase] = React.useState<Record<string, boolean>>(() => ({}));
     const [expandedTranslation, setExpandedTranslation] = React.useState<Record<string, boolean>>(
+        () => ({}),
+    );
+    const [expandedExplanation, setExpandedExplanation] = React.useState<Record<string, boolean>>(
         () => ({}),
     );
     const toggleExpand = (
@@ -348,6 +351,7 @@ export const PhraseList: React.FC<DictionaryViewProps> = ({
                     const phraseMarker = r.id.substring(0, 4);
                     const showFullPhrase = Boolean(expandedPhrase[r.id]);
                     const showFullTrans = Boolean(expandedTranslation[r.id]);
+                    const showFullExplanation = Boolean(expandedExplanation[r.id]);
 
                     return (
                         <div
@@ -458,6 +462,7 @@ export const PhraseList: React.FC<DictionaryViewProps> = ({
                                             color: "var(--text)",
                                             cursor: "pointer",
                                             fontSize: "0.92em",
+                                            fontStyle: "italic",
                                         }}
                                         title={
                                             showFullTrans ? "Click to collapse" : "Click to expand"
@@ -488,12 +493,32 @@ export const PhraseList: React.FC<DictionaryViewProps> = ({
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div
                                             style={{
-                                                whiteSpace: "pre-wrap",
-                                                wordBreak: "break-word",
+                                                whiteSpace: showFullExplanation
+                                                    ? "pre-wrap"
+                                                    : "nowrap",
+                                                overflow: showFullExplanation
+                                                    ? "visible"
+                                                    : "hidden",
+                                                textOverflow: showFullExplanation
+                                                    ? "clip"
+                                                    : "ellipsis",
+                                                maxWidth: "100%",
+                                                wordBreak: showFullExplanation
+                                                    ? "break-word"
+                                                    : undefined,
                                                 color: "var(--text)",
+                                                cursor: "pointer",
                                                 fontSize: "0.92em",
                                                 lineHeight: 1.4,
                                             }}
+                                            title={
+                                                showFullExplanation
+                                                    ? "Click to collapse"
+                                                    : "Click to expand"
+                                            }
+                                            onClick={() =>
+                                                toggleExpand(setExpandedExplanation, r.id)
+                                            }
                                         >
                                             {r.explanation}
                                         </div>

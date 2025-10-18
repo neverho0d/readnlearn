@@ -17,11 +17,13 @@ import {
     createCacheKey,
 } from "../base/types";
 import { providerCache } from "../base/cache";
+import { invoke as tauriInvoke, isTauri as tauriIsTauri } from "@tauri-apps/api/core";
 
 export interface TranslationResult {
     translation: string;
     detectedLanguage?: string;
-    confidence?: number;N
+    confidence?: number;
+    N;
 }
 
 export interface ExplanationResult {
@@ -137,34 +139,59 @@ export class DeepLDriver implements MtDriver {
         }
 
         try {
-            const response = await this.callWithRetry(async () => {
-                const formData = new FormData();
-                formData.append("text", text);
-                formData.append("source_lang", this.mapLanguageCode(from));
-                formData.append("target_lang", this.mapLanguageCode(to));
-                formData.append("preserve_formatting", "1");
+            let result: TranslationResult;
 
-                return await fetch(`${this.baseUrl}/translate`, {
+            if (tauriIsTauri()) {
+                const payload = {
+                    text: [text],
+                    source_lang: this.mapLanguageCode(from),
+                    target_lang: this.mapLanguageCode(to),
+                    preserve_formatting: 1,
+                } as Record<string, unknown>;
+
+                const raw = await tauriInvoke<string>("deepl_proxy", {
+                    apiKey: this.config.apiKey,
+                    baseUrl: this.config.baseUrl,
                     method: "POST",
-                    headers: {
-                        Authorization: `DeepL-Auth-Key ${this.config.apiKey}`,
-                    },
-                    body: formData,
+                    path: "/v2/translate",
+                    body: JSON.stringify(payload),
                 });
-            });
+                const data = JSON.parse(raw);
+                result = {
+                    translation: data?.translations?.[0]?.text || "",
+                    detectedLanguage: data?.translations?.[0]?.detected_source_language,
+                    confidence: 1.0,
+                };
+            } else {
+                const response = await this.callWithRetry(async () => {
+                    const formData = new FormData();
+                    formData.append("text", text);
+                    formData.append("source_lang", this.mapLanguageCode(from));
+                    formData.append("target_lang", this.mapLanguageCode(to));
+                    formData.append("preserve_formatting", "1");
 
-            if (!response.ok) {
-                throw new Error(
-                    `DeepL translation failed: ${response.status} ${response.statusText}`,
-                );
+                    return await fetch(`${this.baseUrl}/translate`, {
+                        method: "POST",
+                        headers: {
+                            Authorization: `DeepL-Auth-Key ${this.config.apiKey}`,
+                        },
+                        body: formData,
+                    });
+                });
+
+                if (!response.ok) {
+                    throw new Error(
+                        `DeepL translation failed: ${response.status} ${response.statusText}`,
+                    );
+                }
+
+                const data = await response.json();
+                result = {
+                    translation: data.translations[0]?.text || "",
+                    detectedLanguage: data.translations[0]?.detected_source_language,
+                    confidence: 1.0,
+                };
             }
-
-            const data = await response.json();
-            const result: TranslationResult = {
-                translation: data.translations[0]?.text || "",
-                detectedLanguage: data.translations[0]?.detected_source_language,
-                confidence: 1.0, // DeepL doesn't provide confidence scores
-            };
 
             // Cache the result
             if (this.config.cache !== false) {

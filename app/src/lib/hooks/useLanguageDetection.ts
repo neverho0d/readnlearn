@@ -61,7 +61,7 @@ export function useLanguageDetection() {
                         detectedLanguage: displayName,
                         lastDetection: {
                             language: languageNameInUI,
-                            languageCode: cached.language,
+                            languageCode: cached.language ?? "",
                             confidence: 0.99,
                             method: "google",
                         },
@@ -71,12 +71,14 @@ export function useLanguageDetection() {
                     });
                     return {
                         language: languageNameInUI,
-                        languageCode: cached.language,
+                        languageCode: cached.language ?? "",
                         confidence: 0.99,
                         method: "google",
                     };
                 }
-            } catch {}
+            } catch {
+                // ignore cache miss / storage errors
+            }
 
             // Debounce: prevent detection if called within 2 seconds of last detection
             const now = Date.now();
