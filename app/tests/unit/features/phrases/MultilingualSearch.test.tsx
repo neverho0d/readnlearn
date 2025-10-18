@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { EnhancedDictionaryView } from "./EnhancedDictionaryView";
+import { EnhancedDictionaryView } from "../../../../src/features/phrases/EnhancedDictionaryView";
 
 // Mock the dependencies
-vi.mock("../../lib/settings/SettingsContext", () => ({
+vi.mock("../../../../src/lib/settings/SettingsContext", () => ({
     useSettings: () => ({
         settings: {
             l1: "en",
@@ -13,7 +13,7 @@ vi.mock("../../lib/settings/SettingsContext", () => ({
     }),
 }));
 
-vi.mock("../../lib/db/phraseStore", () => ({
+vi.mock("../../../../src/lib/db/phraseStore", () => ({
     searchPhrases: vi.fn(),
     searchPhrasesAdvanced: vi.fn(),
     getAllTags: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("../../lib/db/phraseStore", () => ({
     PHRASES_UPDATED_EVENT: "phrases-updated",
 }));
 
-vi.mock("./DictionarySearchBar", () => ({
+vi.mock("../../../../src/features/phrases/DictionarySearchBar", () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionarySearchBar: ({ onSearchChange, onScopeChange }: any) => (
         <div data-testid="search-bar">
@@ -38,7 +38,7 @@ vi.mock("./DictionarySearchBar", () => ({
     ),
 }));
 
-vi.mock("./DictionaryTagsBar", () => ({
+vi.mock("../../../../src/features/phrases/DictionaryTagsBar", () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryTagsBar: ({ tags = [], selectedTags, onTagToggle }: any) => (
         <div data-testid="tags-bar">
@@ -56,7 +56,7 @@ vi.mock("./DictionaryTagsBar", () => ({
     ),
 }));
 
-vi.mock("./DictionaryStatusBar", () => ({
+vi.mock("../../../../src/features/phrases/DictionaryStatusBar", () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryStatusBar: ({ totalCount, currentPage, totalPages }: any) => (
         <div data-testid="status-bar">
@@ -65,7 +65,7 @@ vi.mock("./DictionaryStatusBar", () => ({
     ),
 }));
 
-vi.mock("./DictionaryPager", () => ({
+vi.mock("../../../../src/features/phrases/DictionaryPager", () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryPager: ({ currentPage, totalPages, onPageChange }: any) => (
         <div data-testid="pager">
@@ -191,7 +191,7 @@ describe("Multilingual Search in Dictionary View", () => {
 
     describe("Language-Specific Search", () => {
         it("should search English phrases with stemming", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[0]],
                 totalCount: 1,
@@ -220,7 +220,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should search Spanish phrases with proper language handling", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[1]],
                 totalCount: 1,
@@ -241,7 +241,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should search French phrases with accent handling", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[2]],
                 totalCount: 1,
@@ -262,7 +262,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should search German phrases with compound words", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[3]],
                 totalCount: 1,
@@ -283,7 +283,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should search Chinese phrases with character matching", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[4]],
                 totalCount: 1,
@@ -304,7 +304,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should search Japanese phrases with hiragana/katakana", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[5]],
                 totalCount: 1,
@@ -325,7 +325,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should search Arabic phrases with RTL support", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[6]],
                 totalCount: 1,
@@ -348,7 +348,7 @@ describe("Multilingual Search in Dictionary View", () => {
 
     describe("Cross-Language Search", () => {
         it("should find phrases across multiple languages", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: mockMultilingualPhrases.slice(0, 3), // English, Spanish, French
                 totalCount: 3,
@@ -371,7 +371,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should search in translations across languages", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: mockMultilingualPhrases,
                 totalCount: 7,
@@ -395,7 +395,7 @@ describe("Multilingual Search in Dictionary View", () => {
 
     describe("Advanced Search Features", () => {
         it("should handle fuzzy matching with typos", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[0]],
                 totalCount: 1,
@@ -416,7 +416,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should handle special characters and accents", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [mockMultilingualPhrases[2]],
                 totalCount: 1,
@@ -453,7 +453,7 @@ describe("Multilingual Search in Dictionary View", () => {
                 },
             ];
 
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: phrasesWithEmoji,
                 totalCount: 1,
@@ -490,7 +490,7 @@ describe("Multilingual Search in Dictionary View", () => {
                 colOffset: 0,
             }));
 
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: largePhraseSet.slice(0, 20), // First 20 for pagination
                 totalCount: 100,
@@ -512,7 +512,7 @@ describe("Multilingual Search in Dictionary View", () => {
         });
 
         it("should handle empty search results gracefully", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: [],
                 totalCount: 0,
@@ -537,7 +537,7 @@ describe("Multilingual Search in Dictionary View", () => {
 
     describe("Source File Display", () => {
         it("should display source files correctly for multilingual phrases", async () => {
-            const { searchPhrases } = await import("../../lib/db/phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             vi.mocked(searchPhrases).mockResolvedValue({
                 phrases: mockMultilingualPhrases.slice(0, 3),
                 totalCount: 3,

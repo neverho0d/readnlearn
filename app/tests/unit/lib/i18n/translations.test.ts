@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { translations } from "./translations";
+import { translations } from "../../../../src/lib/i18n/translations";
 
 describe("translations", () => {
     it("contains required languages", () => {

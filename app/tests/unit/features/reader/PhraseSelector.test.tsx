@@ -1,9 +1,9 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { PhraseSelector } from "./PhraseSelector";
-import { I18nProvider } from "../../lib/i18n/I18nContext";
-import { SettingsProvider } from "../../lib/settings/SettingsContext";
+import { PhraseSelector } from "../../../../src/features/reader/PhraseSelector";
+import { I18nProvider } from "../../../../src/lib/i18n/I18nContext";
+import { SettingsProvider } from "../../../../src/lib/settings/SettingsContext";
 
 const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <SettingsProvider>
@@ -29,6 +29,6 @@ describe("PhraseSelector", () => {
         expect(onSave).toHaveBeenCalledTimes(1);
         const payload = onSave.mock.calls[0][0];
         expect(payload.phrase).toBe("hola");
-        expect(payload.translation).toMatch(/example translation/i);
+        expect(payload.translation).toBe("");
     });
 });

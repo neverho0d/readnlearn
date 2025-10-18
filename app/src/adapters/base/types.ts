@@ -11,14 +11,17 @@ export interface ProviderConfig {
     timeout?: number;
     retries?: number;
     cache?: boolean;
+    dailyCap?: number; // Daily cost cap in USD
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ProviderResponse<T = any> {
     data: T;
     metadata: {
         provider: string;
         model?: string;
-        tokens?: number;
+        inputTokens?: number;
+        outputTokens?: number;
         cost?: number;
         latency: number;
         cached: boolean;
@@ -31,9 +34,11 @@ export interface ProviderError extends Error {
     provider: string;
     statusCode?: number;
     retryable: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     metadata?: Record<string, any>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface CacheEntry<T = any> {
     data: T;
     expiresAt: Date;
@@ -60,7 +65,6 @@ export const DEFAULT_RETRY_OPTIONS: RetryOptions = {
 
 export interface BaseAdapter {
     readonly provider: string;
-    readonly config: ProviderConfig;
 
     /**
      * Test the connection to the provider
@@ -71,6 +75,32 @@ export interface BaseAdapter {
      * Get usage statistics for the current period
      */
     getUsage(): Promise<UsageStats>;
+}
+
+export interface LlmBaseAdapter extends BaseAdapter {
+    modelCost: { input: number; output: number };
+
+    /**
+     * Send a prompt to the LLM and get a response
+     */
+    // eslint-disable-next-line no-unused-vars
+    response(prompt: string): Promise<ProviderResponse<string>>;
+
+    /**
+     * Estimate the cost for a given prompt
+     */
+    // eslint-disable-next-line no-unused-vars
+    getCostEstimate(prompt: string): Promise<number>;
+
+    /**
+     * Check if the provider is within daily limits
+     */
+    isWithinDailyLimit(): Promise<boolean>;
+
+    /**
+     * Get remaining quota for the current period
+     */
+    getRemainingQuota(): Promise<number>;
 }
 
 export interface UsageStats {
@@ -88,6 +118,7 @@ export interface UsageStats {
 export function createCacheKey(
     provider: string,
     method: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     params: Record<string, any>,
 ): string {
     const sortedParams = Object.keys(params)
@@ -97,11 +128,13 @@ export function createCacheKey(
                 result[key] = params[key];
                 return result;
             },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             {} as Record<string, any>,
         );
 
     const paramString = JSON.stringify(sortedParams);
-    const hash = btoa(paramString).replace(/[^a-zA-Z0-9]/g, "");
+    // Use a safer hash method that handles all characters
+    const hash = btoa(encodeURIComponent(paramString)).replace(/[^a-zA-Z0-9]/g, "");
     return `${provider}:${method}:${hash}`;
 }
 
@@ -126,6 +159,7 @@ export function calculateBackoffDelay(attempt: number, options: RetryOptions): n
 /**
  * Utility function to determine if an error is retryable
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isRetryableError(error: any): boolean {
     if (error?.retryable === false) return false;
 

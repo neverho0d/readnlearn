@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getSampleTextForLanguage } from "./I18nContext";
+import { getSampleTextForLanguage } from "../../../../src/lib/i18n/I18nContext";
 
 describe("getSampleTextForLanguage", () => {
     it("returns English sample for unknown language", () => {

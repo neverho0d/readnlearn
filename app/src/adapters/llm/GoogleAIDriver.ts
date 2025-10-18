@@ -1,8 +1,8 @@
 /**
- * OpenAI LLM Adapter
+ * Google AI LLM Adapter
  *
- * Implements the LlmBaseAdapter interface for OpenAI's GPT models.
- * Uses OpenAI Responses API with Tauri proxy for unified LLM functionality.
+ * Implements the LlmBaseAdapter interface for Google's Gemini models.
+ * Provides unified LLM functionality with usage tracking and cost estimation.
  */
 
 import { invoke as tauriInvoke, isTauri as tauriIsTauri } from "@tauri-apps/api/core";
@@ -19,44 +19,11 @@ import { providerCache } from "../base/cache";
 
 // Cost in USD per 1M tokens for different models (as of October 2025)
 const MODEL_COST: Record<string, { input: number; output: number }> = {
-    "gpt-5": { input: 1.25, output: 10 },
-    "gpt-5-mini": { input: 0.25, output: 2 },
-    "gpt-5-nano": { input: 0.05, output: 0.4 },
-    "gpt-5-chat-latest": { input: 1.25, output: 10 },
-    "gpt-5-codex": { input: 1.25, output: 10 },
-    "gpt-5-pro": { input: 15, output: 120 },
-    "gpt-4.1": { input: 2, output: 8 },
-    "gpt-4.1-mini": { input: 0.4, output: 1.6 },
-    "gpt-4.1-nano": { input: 0.1, output: 0.4 },
-    "gpt-4o": { input: 2.5, output: 10 },
-    "gpt-4o-2024-05-13": { input: 5, output: 15 },
-    "gpt-4o-mini": { input: 0.15, output: 0.6 },
-    "gpt-realtime": { input: 4, output: 16 },
-    "gpt-realtime-mini": { input: 0.6, output: 2.4 },
-    "gpt-4o-realtime-preview": { input: 5, output: 20 },
-    "gpt-4o-mini-realtime-preview": { input: 0.6, output: 2.4 },
-    "gpt-audio": { input: 2.5, output: 10 },
-    "gpt-audio-mini": { input: 0.6, output: 2.4 },
-    "gpt-4o-audio-preview": { input: 2.5, output: 10 },
-    "gpt-4o-mini-audio-preview": { input: 0.15, output: 0.6 },
-    o1: { input: 15, output: 60 },
-    "o1-pro": { input: 150, output: 600 },
-    "o3-pro": { input: 20, output: 80 },
-    o3: { input: 2, output: 8 },
-    "o3-deep-research": { input: 10, output: 40 },
-    "o4-mini": { input: 1.1, output: 4.4 },
-    "o4-mini-deep-research": { input: 2, output: 8 },
-    "o3-mini": { input: 1.1, output: 4.4 },
-    "o1-mini": { input: 1.1, output: 4.4 },
-    "codex-mini-latest": { input: 1.5, output: 6 },
-    "gpt-5-search-api": { input: 1.25, output: 10 },
-    "gpt-4o-mini-search-preview": { input: 0.15, output: 0.6 },
-    "gpt-4o-search-preview": { input: 2.5, output: 10 },
-    "computer-use-preview": { input: 3, output: 12 },
+    "gemini-2.5-flash-lite": { input: 0.1, output: 0.4 },
 };
 
-export class OpenAIDriver implements LlmBaseAdapter {
-    public readonly provider = "openai";
+export class GoogleAIDriver implements LlmBaseAdapter {
+    public readonly provider = "google";
     private model: string;
     private apiKey: string;
     private baseUrl: string;
@@ -64,13 +31,13 @@ export class OpenAIDriver implements LlmBaseAdapter {
     private dailyCap: number;
     public readonly modelCost: { input: number; output: number };
 
-    constructor(model: string = "gpt-5-nano") {
+    constructor(model: string = "gemini-2.5-flash-lite") {
         this.model = model;
+        this.modelCost = MODEL_COST[model];
         this.apiKey = ""; // Will be loaded from settings
-        this.baseUrl = "https://api.openai.com";
+        this.baseUrl = "https://generativelanguage.googleapis.com";
         this.cache = true;
         this.dailyCap = 50; // Default $50 daily cap (reasonable for 1M token pricing)
-        this.modelCost = MODEL_COST[model];
         this.loadSettings();
     }
 
@@ -82,25 +49,25 @@ export class OpenAIDriver implements LlmBaseAdapter {
             const settingsData = localStorage.getItem("readnlearn-settings");
             if (settingsData) {
                 const settings = JSON.parse(settingsData);
-                this.dailyCap = settings.dailyCapOpenAI || 50;
-                this.apiKey = settings.openaiApiKey || "";
+                this.dailyCap = settings.dailyCapGoogle || 50;
+                this.apiKey = settings.googleApiKey || "";
             }
         } catch (error) {
-            console.warn("Failed to load OpenAI settings:", error);
+            console.warn("Failed to load Google AI settings:", error);
         }
     }
 
     /**
-     * Test the connection to OpenAI
+     * Test the connection to Google AI
      */
     async testConnection(): Promise<boolean> {
         try {
             // Simple test request to verify connection
             const testPrompt = "Hello";
-            await this.callOpenAIResponsesAPI(testPrompt);
+            await this.callGoogleAI(testPrompt);
             return true;
         } catch (error) {
-            console.error("OpenAI connection test failed:", error);
+            console.error("Google AI connection test failed:", error);
             return false;
         }
     }
@@ -140,21 +107,24 @@ export class OpenAIDriver implements LlmBaseAdapter {
         }
 
         try {
-            const { content, inputTokens, outputTokens } =
-                await this.callOpenAIResponsesAPI(prompt);
+            const result = await this.callGoogleAI(prompt);
             const latency = Date.now() - startTime;
+
+            // Estimate tokens (rough approximation)
+            const inputTokens = Math.ceil(prompt.length / 4);
+            const outputTokens = Math.ceil(result.length / 4);
             const cost = this.calculateCost(inputTokens, outputTokens);
 
-            // Update usage tracking with real token counts
+            // Update usage tracking
             await usageTracker.updateUsage(this.provider, inputTokens, outputTokens, cost);
 
             // Cache the result
             if (this.cache !== false) {
-                await providerCache.set(cacheKey, content, this.provider, "response");
+                await providerCache.set(cacheKey, result, this.provider, "response");
             }
 
             return {
-                data: content,
+                data: result,
                 metadata: {
                     provider: this.provider,
                     model: this.model,
@@ -203,70 +173,38 @@ export class OpenAIDriver implements LlmBaseAdapter {
     }
 
     /**
-     * Call OpenAI Responses API via Tauri proxy
+     * Call Google AI API via Tauri proxy
      */
-    private async callOpenAIResponsesAPI(prompt: string): Promise<{
-        content: string;
-        inputTokens: number;
-        outputTokens: number;
-    }> {
+    private async callGoogleAI(prompt: string): Promise<string> {
         if (!tauriIsTauri()) {
-            throw new Error("OpenAI Responses API requires Tauri environment");
+            throw new Error("Google AI API requires Tauri environment");
         }
 
         const body = JSON.stringify({
-            model: this.model,
-            input: prompt,
+            contents: [
+                {
+                    parts: [{ text: prompt }],
+                },
+            ],
         });
 
-        const raw = await tauriInvoke<string>("openai_proxy", {
+        const raw = await tauriInvoke<string>("google_ai_proxy", {
             apiKey: this.apiKey,
             baseUrl: this.baseUrl,
             method: "POST",
-            path: "/v1/responses",
+            path: "/v1beta/models/gemini-2.5-flash-lite:generateContent",
             body,
         });
+        console.log("Google AI response:", raw);
 
         const json = JSON.parse(raw);
 
-        // Extract usage data from the response
-        const inputTokens = json?.usage?.input_tokens || 0;
-        const outputTokens = json?.usage?.output_tokens || 0;
-
-        // Extract content from the response
-        let content = null;
-        let responseContent = null;
-        if (json?.output && Array.isArray(json.output)) {
-            // Look for message type in output array
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const messageItem = json.output.find((item: any) => item.type === "message");
-            if (messageItem?.content && Array.isArray(messageItem?.content)) {
-                responseContent = messageItem?.content;
-                // Look for output_text type
-                const outputTextItem = responseContent.find(
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (item: any) => item.type === "output_text",
-                );
-                if (outputTextItem) {
-                    content = outputTextItem.text;
-                } else {
-                    console.error(
-                        "No output_text item found in response content:",
-                        responseContent,
-                    );
-                    throw new Error("No output_text item found in response content");
-                }
-            } else {
-                console.error("No message item found in response content:", responseContent);
-                throw new Error("No message item found in response content");
-            }
+        // Parse Google AI response format
+        if (json?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            return json.candidates[0].content.parts[0].text;
+        } else {
+            throw new Error("No valid content found in Google AI response");
         }
-
-        return {
-            content,
-            inputTokens,
-            outputTokens,
-        };
     }
 
     /**
@@ -285,8 +223,8 @@ export class OpenAIDriver implements LlmBaseAdapter {
     private createProviderError(error: unknown): ProviderError {
         const errorObj = error as { message?: string; code?: string; status?: number };
         return {
-            name: "OpenAIError",
-            message: errorObj.message || "OpenAI API error",
+            name: "GoogleAIError",
+            message: errorObj.message || "Google AI API error",
             code: errorObj.code || "UNKNOWN_ERROR",
             provider: this.provider,
             statusCode: errorObj.status,

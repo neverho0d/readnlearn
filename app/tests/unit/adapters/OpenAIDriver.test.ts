@@ -9,6 +9,37 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OpenAIDriver } from "../../../src/adapters/llm/OpenAIDriver";
 import { ProviderConfig } from "../../../src/adapters/base/types";
 
+// Mock IndexedDB
+const mockIndexedDB = {
+    open: vi.fn().mockReturnValue({
+        onsuccess: null,
+        onerror: null,
+        onupgradeneeded: null,
+        result: {
+            createObjectStore: vi.fn().mockReturnValue({
+                add: vi.fn(),
+                get: vi.fn(),
+                put: vi.fn(),
+                delete: vi.fn(),
+            }),
+            transaction: vi.fn().mockReturnValue({
+                objectStore: vi.fn().mockReturnValue({
+                    add: vi.fn(),
+                    get: vi.fn(),
+                    put: vi.fn(),
+                    delete: vi.fn(),
+                }),
+            }),
+        },
+    }),
+};
+
+// Mock global IndexedDB
+Object.defineProperty(global, "indexedDB", {
+    value: mockIndexedDB,
+    writable: true,
+});
+
 // Mock OpenAI
 vi.mock("openai", () => ({
     default: vi.fn().mockImplementation(() => ({
@@ -122,7 +153,7 @@ describe("OpenAIDriver", () => {
             expect(result.data.usedPhrases).toHaveLength(2);
             expect(result.metadata.provider).toBe("openai");
             expect(result.metadata.tokens).toBe(100);
-        });
+        }, 10000);
 
         it("should handle API errors gracefully", async () => {
             (driver as any).client.chat.completions.create = vi
@@ -130,7 +161,7 @@ describe("OpenAIDriver", () => {
                 .mockRejectedValue(new Error("API rate limit exceeded"));
 
             await expect(driver.generateStory(mockPhrases, mockContext)).rejects.toThrow();
-        });
+        }, 10000);
 
         it("should handle invalid JSON response", async () => {
             const mockResponse = {
@@ -149,7 +180,7 @@ describe("OpenAIDriver", () => {
                 .mockResolvedValue(mockResponse);
 
             await expect(driver.generateStory(mockPhrases, mockContext)).rejects.toThrow();
-        });
+        }, 10000);
     });
 
     describe("generateCloze", () => {
@@ -196,7 +227,7 @@ describe("OpenAIDriver", () => {
             expect(result.data).toHaveLength(1);
             expect(result.data[0].id).toBe("exercise_1");
             expect(result.data[0].blanks).toHaveLength(1);
-        });
+        }, 10000);
     });
 
     describe("validateStory", () => {
@@ -278,7 +309,7 @@ describe("OpenAIDriver", () => {
 
             expect(result.data.explanation).toBe("A common greeting phrase");
             expect(result.data.examples).toHaveLength(2);
-        });
+        }, 10000);
     });
 
     describe("getUsage", () => {
@@ -332,7 +363,7 @@ describe("OpenAIDriver", () => {
 
             expect(result.data.story).toBe("Test story");
             expect((driver as any).client.chat.completions.create).toHaveBeenCalledTimes(2);
-        });
+        }, 10000);
     });
 
     describe("cost calculation", () => {

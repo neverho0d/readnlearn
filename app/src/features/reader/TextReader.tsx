@@ -527,6 +527,37 @@ export const TextReader: React.FC<TextReaderProps> = ({
             // non-blocking
         }
 
+        // Enqueue story generation for this content
+        try {
+            const { queueStoryGeneration } = await import("../../lib/phrases/storyQueue");
+            const { loadPhrasesByContentHash } = await import("../../lib/db/phraseStore");
+
+            // Get all phrases for this content
+            const contentHash = generateContentHash(text);
+            const allPhrases = await loadPhrasesByContentHash(contentHash);
+
+            if (allPhrases.length >= 3) {
+                // Only generate stories for content with 3+ phrases
+                await queueStoryGeneration({
+                    contentHash,
+                    phraseIds: allPhrases.map((p) => p.id),
+                    l1: settings.l1,
+                    l2: settings.l2,
+                    level: settings.userLevel || "A2",
+                    difficulties: settings.userDifficulties || [],
+                    maxRetries: 3,
+                });
+                console.log(
+                    "Story generation queued for content with",
+                    allPhrases.length,
+                    "phrases",
+                );
+            }
+        } catch (error) {
+            console.warn("Failed to queue story generation:", error);
+            // non-blocking
+        }
+
         // Debug logging
         // if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development") {
         //     console.log("Phrase saved:", {

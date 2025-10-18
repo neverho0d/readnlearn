@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 // import React from "react"; // Not needed in this test file
 import { AuthProvider, useAuth } from "../../../../src/lib/auth/AuthContext";
 
@@ -43,11 +43,13 @@ describe("AuthContext", () => {
     });
 
     it("should provide authentication context", () => {
-        render(
-            <AuthProvider>
-                <TestComponent />
-            </AuthProvider>,
-        );
+        act(() => {
+            render(
+                <AuthProvider>
+                    <TestComponent />
+                </AuthProvider>,
+            );
+        });
 
         expect(screen.getByTestId("loading")).toBeInTheDocument();
         expect(screen.getByTestId("session")).toBeInTheDocument();

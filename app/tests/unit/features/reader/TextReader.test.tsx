@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { findPhraseWithFlexibleWhitespace, findActualMatchedText } from "./TextReader";
+import {
+    findPhraseWithFlexibleWhitespace,
+    findActualMatchedText,
+} from "../../../../src/features/reader/TextReader";
 
 describe("TextReader Phrase Matching Functions", () => {
     describe("findPhraseWithFlexibleWhitespace", () => {

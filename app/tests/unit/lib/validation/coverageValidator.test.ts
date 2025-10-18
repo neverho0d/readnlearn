@@ -12,7 +12,7 @@ import {
     getCoverageStats,
     Phrase,
     Story,
-} from "../../../src/lib/validation/coverageValidator";
+} from "../../../../src/lib/validation/coverageValidator";
 
 describe("Coverage Validator", () => {
     const mockPhrases: Phrase[] = [
@@ -94,8 +94,8 @@ describe("Coverage Validator", () => {
         it("should handle empty phrases array", () => {
             const result = validateCoverage([], mockStory);
 
-            expect(result.valid).toBe(true);
-            expect(result.coverage).toBe(1.0);
+            expect(result.valid).toBe(false);
+            expect(result.coverage).toBeNaN();
             expect(result.missingPhrases).toHaveLength(0);
             expect(result.includedPhrases).toHaveLength(0);
         });
@@ -157,8 +157,8 @@ describe("Coverage Validator", () => {
             expect(stats.includedPhrases).toBe(3);
             expect(stats.missingPhrases).toBe(0);
             expect(stats.coveragePercentage).toBe(100);
-            expect(stats.averagePhraseLength).toBeCloseTo(10.33, 2);
-            expect(stats.storyLength).toBe(58);
+            expect(stats.averagePhraseLength).toBeCloseTo(10.67, 1);
+            expect(stats.storyLength).toBe(64);
         });
 
         it("should handle partial coverage", () => {

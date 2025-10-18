@@ -388,7 +388,7 @@ export async function loadPhrasesForContent(
 
         // Sort phrases using the line_no * 100000 + col_offset formula for consistent ordering
         // This ensures proper visual order regardless of how positions are calculated
-        const sortedPhrases = relevantPhrases.sort((a, b) => {
+        const sortedPhrases = (relevantPhrases || []).sort((a, b) => {
             const positionA = (a.lineNo || 0) * 100000 + (a.colOffset || 0);
             const positionB = (b.lineNo || 0) * 100000 + (b.colOffset || 0);
             return positionB - positionA; // Sort in descending order (last to first for decoration)

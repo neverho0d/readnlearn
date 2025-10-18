@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { EnhancedDictionaryView } from "./EnhancedDictionaryView";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { EnhancedDictionaryView } from "../../../../src/features/phrases/EnhancedDictionaryView";
 
 // Mock the dependencies
-vi.mock("../../lib/settings/SettingsContext", () => ({
+vi.mock("../../../../src/lib/settings/SettingsContext", () => ({
     useSettings: () => ({
         settings: {
             l1: "en",
@@ -13,7 +13,7 @@ vi.mock("../../lib/settings/SettingsContext", () => ({
     }),
 }));
 
-vi.mock("../../lib/db/phraseStore", () => ({
+vi.mock("../../../../src/lib/db/phraseStore", () => ({
     searchPhrases: vi.fn(),
     getAllTags: vi.fn(),
     removePhrase: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock("../../lib/db/phraseStore", () => ({
     PHRASES_UPDATED_EVENT: "phrases-updated",
 }));
 
-vi.mock("./DictionarySearchBar", () => ({
+vi.mock("../../../../src/features/phrases/DictionarySearchBar", () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionarySearchBar: ({ onSearchChange, onScopeChange }: any) => (
         <div data-testid="search-bar">
@@ -30,14 +30,17 @@ vi.mock("./DictionarySearchBar", () => ({
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search phrases..."
             />
-            <button data-testid="scope-toggle" onClick={() => onScopeChange("all")}>
+            <button
+                data-testid="scope-toggle"
+                onClick={() => onScopeChange && onScopeChange("all")}
+            >
                 All files
             </button>
         </div>
     ),
 }));
 
-vi.mock("./DictionaryTagsBar", () => ({
+vi.mock("../../../../src/features/phrases/DictionaryTagsBar", () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryTagsBar: ({ tags = [], selectedTags, onTagToggle }: any) => (
         <div data-testid="tags-bar">
@@ -55,7 +58,7 @@ vi.mock("./DictionaryTagsBar", () => ({
     ),
 }));
 
-vi.mock("./DictionaryStatusBar", () => ({
+vi.mock("../../../../src/features/phrases/DictionaryStatusBar", () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryStatusBar: ({ totalCount, currentPage, totalPages }: any) => (
         <div data-testid="status-bar">
@@ -64,7 +67,7 @@ vi.mock("./DictionaryStatusBar", () => ({
     ),
 }));
 
-vi.mock("./DictionaryPager", () => ({
+vi.mock("../../../../src/features/phrases/DictionaryPager", () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DictionaryPager: ({ currentPage, totalPages, onPageChange }: any) => (
         <div data-testid="pager">
@@ -124,12 +127,16 @@ describe("EnhancedDictionaryView", () => {
     });
 
     it("should show loading indicator initially", () => {
-        render(<EnhancedDictionaryView />);
+        act(() => {
+            act(() => {
+                render(<EnhancedDictionaryView />);
+            });
+        });
         expect(screen.getByText("Loading phrases...")).toBeInTheDocument();
     });
 
     it("should display phrases when loaded", async () => {
-        const { searchPhrases } = await import("../../lib/db/phraseStore");
+        const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
         vi.mocked(searchPhrases).mockResolvedValue({
             phrases: mockPhrases,
             totalCount: 2,
@@ -139,7 +146,9 @@ describe("EnhancedDictionaryView", () => {
             hasPreviousPage: false,
         });
 
-        render(<EnhancedDictionaryView />);
+        act(() => {
+            render(<EnhancedDictionaryView />);
+        });
 
         await waitFor(() => {
             expect(screen.getByText("Hello world")).toBeInTheDocument();
@@ -148,7 +157,7 @@ describe("EnhancedDictionaryView", () => {
     });
 
     it("should show 'No phrases found' when no results", async () => {
-        const { searchPhrases } = await import("../../lib/db/phraseStore");
+        const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
         vi.mocked(searchPhrases).mockResolvedValue({
             phrases: [],
             totalCount: 0,
@@ -158,7 +167,9 @@ describe("EnhancedDictionaryView", () => {
             hasPreviousPage: false,
         });
 
-        render(<EnhancedDictionaryView />);
+        act(() => {
+            render(<EnhancedDictionaryView />);
+        });
 
         await waitFor(() => {
             expect(
@@ -168,7 +179,7 @@ describe("EnhancedDictionaryView", () => {
     });
 
     it("should display source file correctly", async () => {
-        const { searchPhrases } = await import("../../lib/db/phraseStore");
+        const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
         vi.mocked(searchPhrases).mockResolvedValue({
             phrases: mockPhrases,
             totalCount: 2,
@@ -178,7 +189,9 @@ describe("EnhancedDictionaryView", () => {
             hasPreviousPage: false,
         });
 
-        render(<EnhancedDictionaryView />);
+        act(() => {
+            render(<EnhancedDictionaryView />);
+        });
 
         await waitFor(() => {
             expect(screen.getAllByText("test.txt")).toHaveLength(2);
@@ -193,7 +206,7 @@ describe("EnhancedDictionaryView", () => {
             },
         ];
 
-        const { searchPhrases } = await import("../../lib/db/phraseStore");
+        const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
         vi.mocked(searchPhrases).mockResolvedValue({
             phrases: phrasesWithoutSource,
             totalCount: 1,
@@ -203,7 +216,9 @@ describe("EnhancedDictionaryView", () => {
             hasPreviousPage: false,
         });
 
-        render(<EnhancedDictionaryView />);
+        act(() => {
+            render(<EnhancedDictionaryView />);
+        });
 
         await waitFor(() => {
             expect(screen.getByText("Unknown source")).toBeInTheDocument();
@@ -216,10 +231,12 @@ describe("EnhancedDictionaryView", () => {
             { id: "test-2", text: "Good morning", position: 10 },
         ];
 
-        const { loadAllPhrases } = await import("../../lib/db/phraseStore");
+        const { loadAllPhrases } = await import("../../../../src/lib/db/phraseStore");
         vi.mocked(loadAllPhrases).mockResolvedValue(mockPhrases);
 
-        render(<EnhancedDictionaryView cachedPhrases={cachedPhrases} />);
+        act(() => {
+            render(<EnhancedDictionaryView cachedPhrases={cachedPhrases} />);
+        });
 
         await waitFor(() => {
             expect(loadAllPhrases).toHaveBeenCalled();
@@ -228,7 +245,7 @@ describe("EnhancedDictionaryView", () => {
     });
 
     it("should perform database search when search text is provided", async () => {
-        const { searchPhrases } = await import("../../lib/db/phraseStore");
+        const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
         vi.mocked(searchPhrases).mockResolvedValue({
             phrases: [mockPhrases[0]],
             totalCount: 1,
@@ -238,7 +255,9 @@ describe("EnhancedDictionaryView", () => {
             hasPreviousPage: false,
         });
 
-        render(<EnhancedDictionaryView />);
+        act(() => {
+            render(<EnhancedDictionaryView />);
+        });
 
         const searchInput = screen.getByTestId("search-input");
         fireEvent.change(searchInput, { target: { value: "Hello" } });
@@ -253,10 +272,12 @@ describe("EnhancedDictionaryView", () => {
     });
 
     it("should handle search errors gracefully", async () => {
-        const { searchPhrases } = await import("../../lib/db/phraseStore");
+        const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
         vi.mocked(searchPhrases).mockRejectedValue(new Error("Search failed"));
 
-        render(<EnhancedDictionaryView />);
+        act(() => {
+            render(<EnhancedDictionaryView />);
+        });
 
         await waitFor(() => {
             expect(
@@ -266,7 +287,7 @@ describe("EnhancedDictionaryView", () => {
     });
 
     it("should filter by source file when scope is set to current", async () => {
-        const { searchPhrases } = await import("../../lib/db/phraseStore");
+        const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
         vi.mocked(searchPhrases).mockResolvedValue({
             phrases: mockPhrases,
             totalCount: mockPhrases.length,

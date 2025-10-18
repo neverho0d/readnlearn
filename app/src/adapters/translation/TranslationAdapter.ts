@@ -1,16 +1,11 @@
 /**
  * TranslationAdapter
  *
- * Universal adapter for translation services that handles:
- * - Provider selection and API key management
- * - Environment detection (Tauri vs browser)
- * - API calls with proper error handling
- * - Response parsing and validation
- * - Usage caps and rate limiting
+ * Adapter that uses multiple LLM drivers for translation with cost-aware selection
  */
 
+import { LlmBaseAdapter } from "../base/types";
 import { LANGUAGES } from "@/lib/settings/SettingsContext";
-import { invoke as tauriInvoke, isTauri as isTauriRuntime } from "@tauri-apps/api/core";
 
 export interface TranslationResult {
     translation: string;
@@ -26,47 +21,51 @@ export interface TranslationRequest {
     difficulties: string[];
 }
 
-export interface ProviderConfig {
-    apiKey: string;
-    dailyCap?: number;
-    timeout?: number;
-}
-
 export class TranslationAdapter {
-    private providerConfig: ProviderConfig;
-    private usageCount: number = 0;
-    private lastResetDate: string = new Date().toISOString().split("T")[0];
+    private drivers: LlmBaseAdapter[];
 
-    constructor(providerConfig: ProviderConfig) {
-        this.providerConfig = providerConfig;
+    constructor(drivers: LlmBaseAdapter[]) {
+        if (!drivers || !Array.isArray(drivers)) {
+            throw new Error("TranslationAdapter requires an array of LlmBaseAdapter drivers");
+        }
+        // Sort drivers by cost (cheapest first)
+        this.drivers = drivers.sort((a: LlmBaseAdapter, b: LlmBaseAdapter) => {
+            // Simple cost comparison - in real implementation, you'd compare actual costs
+            const aCost = a.provider === "google" ? 0.1 : 0.05; // Google is cheaper
+            const bCost = b.provider === "google" ? 0.1 : 0.05;
+            return aCost - bCost;
+        });
     }
 
     /**
-     * Translate text using the configured provider
+     * Translate text using the best available provider
      */
     async translate(request: TranslationRequest): Promise<TranslationResult> {
-        // Check daily usage cap
-        this.checkDailyCap();
-
-        // Build the translation prompt
         const prompt = this.buildTranslationPrompt(request);
-        console.log("prompt", prompt);
 
-        try {
-            let result: TranslationResult;
-            if (isTauriRuntime()) {
-                result = await this.translateWithTauri(prompt);
-            } else {
-                result = await this.translateWithBrowser(prompt);
+        // Try each driver until one succeeds
+        for (const driver of this.drivers) {
+            try {
+                // Check if driver is within limits
+                if (!(await driver.isWithinDailyLimit())) {
+                    console.log(`Driver ${driver.provider} exceeded daily limit, trying next...`);
+                    continue;
+                }
+
+                const response = await driver.response(prompt);
+                console.log(`Translation response from ${driver.provider}:`, response);
+                return this.parseTranslationResponse(response.data);
+            } catch (error) {
+                console.error(`Translation failed with ${driver.provider}:`, error);
+                // Try next driver
+                continue;
             }
-            console.log("translation result", result);
-            return result;
-        } catch (error) {
-            console.error("Translation failed:", error);
-            throw new Error(
-                `Translation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-            );
         }
+
+        // All drivers failed
+        throw new Error(
+            "All translation providers have failed or exceeded daily limits. Please try again later or check your settings.",
+        );
     }
 
     /**
@@ -120,6 +119,7 @@ Answer in JSON format, like the following example:
 }
 
 Save the translation into the "phrase_translation" field of the JSON object, and save the explanation as Markdown into the "explanation" field of the JSON object.
+Make sure the JSON object is valid JSON with properly escaped quotes.
 Keep explanations concise but helpful for ${level} level learners with mentioned difficulties: ${difficulties}.
 When referring to translated words, pair them with the original word in ${l2_name} in parentheses.
 Answer in ${l1_name}.
@@ -128,153 +128,27 @@ Answer in ${l1_name}.
     }
 
     /**
-     * Translate using Tauri proxy
+     * Parse the translation response from LLM
      */
-    private async translateWithTauri(prompt: string): Promise<TranslationResult> {
-        const requestBody = {
-            model: "gpt-5-nano",
-            input: prompt,
-        };
-
-        console.log("Making Tauri OpenAI API call with body:", requestBody);
-
-        const raw = await tauriInvoke<string>("openai_proxy", {
-            apiKey: this.providerConfig.apiKey,
-            method: "POST",
-            path: "/v1/responses",
-            body: JSON.stringify(requestBody),
-        });
-
-        return this.parseResponse(raw);
-    }
-
-    /**
-     * Translate using direct browser API call
-     */
-    private async translateWithBrowser(prompt: string): Promise<TranslationResult> {
-        const requestBody = {
-            model: "gpt-5-nano",
-            input: prompt,
-        };
-
-        console.log("Making browser OpenAI API call with body:", requestBody);
-
-        const response = await fetch("https://api.openai.com/v1/responses", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${this.providerConfig.apiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
-
-        return this.parseResponse(await response.text());
-    }
-
-    /**
-     * Parse the LLM response and extract translation/explanation
-     */
-    private parseResponse(response: string): TranslationResult {
+    private parseTranslationResponse(response: string): TranslationResult {
         try {
-            console.log("OpenAI API raw response:", response);
-            const json = JSON.parse(response);
-            console.log("OpenAI API response:", json);
-            console.log("Response structure analysis:", {
-                hasOutput: !!json?.output,
-                hasChoices: !!json?.choices,
-                hasContent: !!json?.content,
-                outputLength: json?.output?.length,
-                choicesLength: json?.choices?.length,
-            });
+            console.log("Parsing translation response:", response);
+            // // Try to extract JSON from the response
+            // const jsonMatch = response.match(/\{[\s\S]*\}/);
+            // if (!jsonMatch) {
+            //     throw new Error("No JSON found in response");
+            // }
 
-            // Check for API errors first
-            if (json.error) {
-                console.error("OpenAI API error:", json.error);
-                throw new Error(`OpenAI API error: ${json.error.message}`);
-            }
-
-            // Parse the new OpenAI Responses API format
-            let responseContent = null;
-            let responseJSON = null;
-
-            if (json?.output && Array.isArray(json.output)) {
-                // Look for message type in output array
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const messageItem = json.output.find((item: any) => item.type === "message");
-                if (messageItem?.content && Array.isArray(messageItem?.content)) {
-                    responseContent = messageItem?.content;
-                    // Look for output_text type
-                    const outputTextItem = responseContent.find(
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (item: any) => item.type === "output_text",
-                    );
-                    if (outputTextItem) {
-                        try {
-                            // Parse the text as JSON to get our expected structure
-                            responseJSON = JSON.parse(outputTextItem.text);
-                        } catch (parseError) {
-                            console.error("Failed to parse output_text as JSON:", parseError);
-                            throw new Error("Failed to parse output_text as JSON");
-                        }
-                    } else {
-                        console.error(
-                            "No output_text item found in response content:",
-                            responseContent,
-                        );
-                        throw new Error("No output_text item found in response content");
-                    }
-                } else {
-                    console.error("No message item found in response content:", responseContent);
-                    throw new Error("No message item found in response content");
-                }
-            }
-
-            if (!responseJSON) {
-                console.error("No response content in API response:", json);
-                throw new Error("No response from OpenAI API");
-            }
+            // const result = JSON.parse(jsonMatch[0]);
+            const result = JSON.parse(response);
 
             return {
-                translation: responseJSON.phrase_translation || "",
-                explanation: responseJSON.explanation || "",
+                translation: result.phrase_translation || "",
+                explanation: result.explanation || "",
             };
-        } catch {
-            // If JSON parsing fails, treat the entire response as translation
-            return {
-                translation: response,
-                explanation: "",
-            };
+        } catch (error) {
+            console.error("Failed to parse translation response:", error);
+            throw new Error("Failed to parse translation response from provider");
         }
-    }
-
-    /**
-     * Check daily usage cap
-     */
-    private checkDailyCap(): void {
-        const today = new Date().toISOString().split("T")[0];
-
-        // Reset counter if it's a new day
-        if (today !== this.lastResetDate) {
-            this.usageCount = 0;
-            this.lastResetDate = today;
-        }
-
-        // Check if we've exceeded the daily cap
-        if (this.providerConfig.dailyCap && this.usageCount >= this.providerConfig.dailyCap) {
-            throw new Error(`Daily translation cap exceeded (${this.providerConfig.dailyCap})`);
-        }
-
-        this.usageCount++;
-    }
-
-    /**
-     * Get current usage statistics
-     */
-    getUsageStats(): { count: number; cap?: number; resetDate: string } {
-        return {
-            count: this.usageCount,
-            cap: this.providerConfig.dailyCap,
-            resetDate: this.lastResetDate,
-        };
     }
 }

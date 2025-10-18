@@ -2,6 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock Supabase client
 const mockSupabase = {
+    auth: {
+        getUser: vi.fn().mockResolvedValue({
+            data: {
+                user: {
+                    id: "test-user-id",
+                    email: "test@example.com",
+                },
+            },
+            error: null,
+        }),
+    },
     from: vi.fn(() => ({
         select: vi.fn(() => ({
             eq: vi.fn(() => ({
@@ -54,17 +65,6 @@ const mockSupabase = {
             error: null,
         })),
     })),
-    auth: {
-        getUser: vi.fn(() => ({
-            data: { user: { id: "test-user-id" } },
-        })),
-        getSession: vi.fn(() =>
-            Promise.resolve({
-                data: { session: null },
-                error: null,
-            }),
-        ),
-    },
 };
 
 vi.mock("../supabase/client", () => ({
@@ -123,7 +123,7 @@ describe("FTS Database Schema and Configuration", () => {
 
     describe("FTS Query Optimization", () => {
         it("should use websearch type for better multilingual support", async () => {
-            const { searchPhrases } = await import("./phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
 
             mockSupabase
                 .from()
@@ -225,7 +225,7 @@ describe("FTS Database Schema and Configuration", () => {
 
             const startTime = performance.now();
 
-            const { searchPhrases } = await import("./phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             await searchPhrases({
                 searchText: "lorem ipsum",
                 scope: "all",
@@ -246,7 +246,7 @@ describe("FTS Database Schema and Configuration", () => {
                     count: 0,
                 });
 
-                const { searchPhrases } = await import("./phraseStore");
+                const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
                 return await searchPhrases({
                     searchText: `search term ${i}`,
                     scope: "all",
@@ -346,7 +346,7 @@ describe("FTS Database Schema and Configuration", () => {
                 count: 0,
             });
 
-            const { searchPhrases } = await import("./phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             const result = await searchPhrases({
                 searchText: "",
                 scope: "all",
@@ -381,7 +381,7 @@ describe("FTS Database Schema and Configuration", () => {
                 count: 0,
             });
 
-            const { searchPhrases } = await import("./phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
             const result = await searchPhrases({
                 searchText: longSearchTerm,
                 scope: "all",
@@ -399,7 +399,7 @@ describe("FTS Database Schema and Configuration", () => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
 
-            const { searchPhrases } = await import("./phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
 
             const result = await searchPhrases({
                 searchText: "test",
@@ -430,7 +430,7 @@ describe("FTS Database Schema and Configuration", () => {
                     count: 0,
                 });
 
-            const { searchPhrases } = await import("./phraseStore");
+            const { searchPhrases } = await import("../../../../src/lib/db/phraseStore");
 
             const result = await searchPhrases({
                 searchText: "test",

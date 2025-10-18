@@ -26,6 +26,7 @@ import { TextReader } from "./features/reader/TextReader";
 import "./App.css";
 import { PhraseListView } from "./features/phrases/components";
 import { EnhancedDictionaryView } from "./features/phrases/EnhancedDictionaryView";
+import { LearningMode } from "./features/study/LearningMode";
 import { useAppMode } from "./lib/state/appMode";
 import { generateContentHash } from "./lib/db/phraseStore";
 import { AuthScreen } from "./features/auth/AuthScreen";
@@ -877,7 +878,12 @@ function MainContent(props: {
                     cachedPhrases={savedPhrases}
                 />
             )}
-            {mode === "learning" && <div />}
+            {mode === "learning" && (
+                <LearningMode
+                    currentText={externalText || ""}
+                    sourceFile={sourceFile || undefined}
+                />
+            )}
         </div>
     );
 }

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { searchPhrases, searchPhrasesAdvanced } from "./phraseStore";
+import { searchPhrases, searchPhrasesAdvanced } from "../../../../src/lib/db/phraseStore";
 // import { supabase } from "../supabase/client"; // Not used in this test file
 
 // Mock the cache module to prevent IndexedDB initialization
-vi.mock("../cache/indexedDB", () => ({
+vi.mock("../../../../src/lib/cache/indexedDB", () => ({
     cache: {
         init: vi.fn().mockResolvedValue(undefined),
         get: vi.fn().mockResolvedValue(null),
@@ -13,11 +13,27 @@ vi.mock("../cache/indexedDB", () => ({
     },
 }));
 
-vi.mock("../supabase/client", () => ({
+vi.mock("../../../../src/lib/supabase/client", () => ({
     supabase: {
+        auth: {
+            getUser: vi.fn().mockResolvedValue({
+                data: {
+                    user: {
+                        id: "test-user-id",
+                        email: "test@example.com",
+                    },
+                },
+                error: null,
+            }),
+        },
         from: vi.fn(() => ({
             select: vi.fn(() => ({
                 eq: vi.fn(() => ({
+                    limit: vi.fn(() => ({
+                        data: [],
+                        error: null,
+                        count: 0,
+                    })),
                     textSearch: vi.fn(() => ({
                         data: [
                             {
@@ -115,20 +131,6 @@ vi.mock("../supabase/client", () => ({
                 error: null,
             })),
         })),
-        auth: {
-            getUser: vi.fn(() =>
-                Promise.resolve({
-                    data: { user: { id: "test-user-id" } },
-                    error: null,
-                }),
-            ),
-            getSession: vi.fn(() =>
-                Promise.resolve({
-                    data: { session: { user: { id: "test-user-id" } } },
-                    error: null,
-                }),
-            ),
-        },
     },
 }));
 

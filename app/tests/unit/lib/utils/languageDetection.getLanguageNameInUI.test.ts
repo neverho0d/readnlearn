@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLanguageNameInUI } from "../../../src/lib/utils/languageDetection";
+import { getLanguageNameInUI } from "../../../../src/lib/utils/languageDetection";
 
 describe("getLanguageNameInUI", () => {
     it("returns English names when UI is en", () => {

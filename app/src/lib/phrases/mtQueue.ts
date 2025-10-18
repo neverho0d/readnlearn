@@ -1,5 +1,7 @@
 import { updatePhraseTranslation } from "../db/phraseStore";
-import { createAdapterFromSettings } from "../../adapters/translation";
+import { TranslationAdapter } from "../../adapters/translation/TranslationAdapter";
+import { OpenAIDriver } from "../../adapters/llm/OpenAIDriver";
+import { GoogleAIDriver } from "../../adapters/llm/GoogleAIDriver";
 
 // Helper function to get user settings from localStorage
 async function getUserSettings() {
@@ -18,6 +20,8 @@ async function getUserSettings() {
         return {
             openaiApiKey: settings.openaiApiKey,
             openaiDailyCap: settings.dailyCapOpenAI,
+            googleApiKey: settings.googleApiKey,
+            googleDailyCap: settings.dailyCapGoogle,
         };
     } catch (error) {
         console.error("Failed to load settings:", error);
@@ -69,17 +73,19 @@ export async function queueTranslate(job: TranslateJob): Promise<void> {
             throw new Error("Settings not available - please configure your API keys in Settings");
         }
 
-        const adapter = createAdapterFromSettings(settings);
+        // Create drivers
+        const openaiDriver = new OpenAIDriver();
+        const googleDriver = new GoogleAIDriver();
 
-        if (!adapter) {
-            console.error("Translation failed: No OpenAI API key configured");
-            console.log(
-                "To fix this: Click the gear icon (⚙️) in the top bar → Enter your OpenAI API key → Save",
-            );
-            throw new Error(
-                "No translation provider configured - please add an OpenAI API key in Settings (click the gear icon ⚙️)",
-            );
-        }
+        // Update daily caps from settings (ensure reasonable limits for 1M token pricing)
+        const openaiCap = Math.max(settings.openaiDailyCap || 50, 10); // Minimum $10, default $50
+        const googleCap = Math.max(settings.googleDailyCap || 50, 10); // Minimum $10, default $50
+
+        openaiDriver.updateDailyCap(openaiCap);
+        googleDriver.updateDailyCap(googleCap);
+
+        // Create translation adapter with drivers
+        const adapter = new TranslationAdapter([googleDriver, openaiDriver]);
 
         // Use the adapter to translate
         const result = await adapter.translate({

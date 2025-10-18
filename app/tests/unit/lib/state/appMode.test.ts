@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { useAppMode } from "./appMode";
+import { useAppMode } from "../../../../src/lib/state/appMode";
 
 describe("useAppMode", () => {
     beforeEach(() => {

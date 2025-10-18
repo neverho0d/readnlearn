@@ -12,7 +12,7 @@
 
 import React from "react";
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
     SettingsProvider,
@@ -122,11 +122,13 @@ describe("SettingsContext", () => {
 
     describe("SettingsProvider", () => {
         it("renders children with default settings", () => {
-            render(
-                <SettingsProvider>
-                    <TestComponent />
-                </SettingsProvider>,
-            );
+            act(() => {
+                render(
+                    <SettingsProvider>
+                        <TestComponent />
+                    </SettingsProvider>,
+                );
+            });
 
             expect(screen.getByTestId("l1")).toHaveTextContent("en");
             expect(screen.getByTestId("l2")).toHaveTextContent("es");
@@ -189,11 +191,13 @@ describe("SettingsContext", () => {
                 throw new Error("localStorage error");
             });
 
-            render(
-                <SettingsProvider>
-                    <TestComponent />
-                </SettingsProvider>,
-            );
+            act(() => {
+                render(
+                    <SettingsProvider>
+                        <TestComponent />
+                    </SettingsProvider>,
+                );
+            });
 
             // Should fall back to default settings
             expect(screen.getByTestId("l1")).toHaveTextContent("en");
@@ -203,11 +207,13 @@ describe("SettingsContext", () => {
         it("handles invalid JSON in localStorage", () => {
             mockLocalStorage.getItem.mockReturnValue("invalid json");
 
-            render(
-                <SettingsProvider>
-                    <TestComponent />
-                </SettingsProvider>,
-            );
+            act(() => {
+                render(
+                    <SettingsProvider>
+                        <TestComponent />
+                    </SettingsProvider>,
+                );
+            });
 
             // Should fall back to default settings
             expect(screen.getByTestId("l1")).toHaveTextContent("en");
@@ -250,11 +256,13 @@ describe("SettingsContext", () => {
 
     describe("useSettings Hook", () => {
         it("provides settings and update functions", () => {
-            render(
-                <SettingsProvider>
-                    <TestComponent />
-                </SettingsProvider>,
-            );
+            act(() => {
+                render(
+                    <SettingsProvider>
+                        <TestComponent />
+                    </SettingsProvider>,
+                );
+            });
 
             expect(screen.getByTestId("l1")).toBeInTheDocument();
             expect(screen.getByTestId("l2")).toBeInTheDocument();
@@ -306,21 +314,27 @@ describe("SettingsContext", () => {
 
     describe("getLanguageName Function", () => {
         it("returns native name for supported languages", () => {
-            render(
-                <SettingsProvider>
-                    <TestComponent />
-                </SettingsProvider>,
-            );
+            act(() => {
+                render(
+                    <SettingsProvider>
+                        <TestComponent />
+                    </SettingsProvider>,
+                );
+            });
 
             expect(screen.getByTestId("language-name")).toHaveTextContent("English");
         });
 
         it("handles all supported languages", () => {
-            const { rerender } = render(
-                <SettingsProvider>
-                    <TestComponent />
-                </SettingsProvider>,
-            );
+            let rerender: any;
+            act(() => {
+                const result = render(
+                    <SettingsProvider>
+                        <TestComponent />
+                    </SettingsProvider>,
+                );
+                rerender = result.rerender;
+            });
 
             // Test each supported language
             const languages = ["en", "es", "fr", "de", "it", "pt"];
@@ -334,13 +348,15 @@ describe("SettingsContext", () => {
             ];
 
             languages.forEach((lang, index) => {
-                rerender(
-                    <SettingsProvider>
-                        <div data-testid="test-lang">
-                            {LANGUAGES.find((l) => l.code === lang)?.nativeName || lang}
-                        </div>
-                    </SettingsProvider>,
-                );
+                act(() => {
+                    rerender(
+                        <SettingsProvider>
+                            <div data-testid="test-lang">
+                                {LANGUAGES.find((l) => l.code === lang)?.nativeName || lang}
+                            </div>
+                        </SettingsProvider>,
+                    );
+                });
                 expect(screen.getByTestId("test-lang")).toHaveTextContent(expectedNames[index]);
             });
         });
@@ -351,11 +367,13 @@ describe("SettingsContext", () => {
                 return <div data-testid="unsupported-lang">{getLanguageName("xx")}</div>;
             };
 
-            render(
-                <SettingsProvider>
-                    <TestLanguageName />
-                </SettingsProvider>,
-            );
+            act(() => {
+                render(
+                    <SettingsProvider>
+                        <TestLanguageName />
+                    </SettingsProvider>,
+                );
+            });
 
             expect(screen.getByTestId("unsupported-lang")).toHaveTextContent("xx");
         });
@@ -412,11 +430,13 @@ describe("SettingsContext", () => {
         it("handles empty localStorage", () => {
             mockLocalStorage.getItem.mockReturnValue("");
 
-            render(
-                <SettingsProvider>
-                    <TestComponent />
-                </SettingsProvider>,
-            );
+            act(() => {
+                render(
+                    <SettingsProvider>
+                        <TestComponent />
+                    </SettingsProvider>,
+                );
+            });
 
             expect(screen.getByTestId("l1")).toHaveTextContent("en");
         });
@@ -424,11 +444,13 @@ describe("SettingsContext", () => {
         it("handles null localStorage value", () => {
             mockLocalStorage.getItem.mockReturnValue(null);
 
-            render(
-                <SettingsProvider>
-                    <TestComponent />
-                </SettingsProvider>,
-            );
+            act(() => {
+                render(
+                    <SettingsProvider>
+                        <TestComponent />
+                    </SettingsProvider>,
+                );
+            });
 
             expect(screen.getByTestId("l1")).toHaveTextContent("en");
         });
@@ -527,11 +549,15 @@ describe("SettingsContext", () => {
                 return <div data-testid="settings">{settings.l1}</div>;
             };
 
-            const { rerender } = render(
-                <SettingsProvider>
-                    <TestComponentWithSpy />
-                </SettingsProvider>,
-            );
+            let rerender: any;
+            act(() => {
+                const result = render(
+                    <SettingsProvider>
+                        <TestComponentWithSpy />
+                    </SettingsProvider>,
+                );
+                rerender = result.rerender;
+            });
 
             // Initial render
             expect(renderSpy).toHaveBeenCalledTimes(1);
