@@ -28,7 +28,9 @@ import { PhraseListView } from "./features/phrases/components";
 import { EnhancedDictionaryView } from "./features/phrases/EnhancedDictionaryView";
 import { LearningMode } from "./features/study/LearningMode";
 import { useAppMode } from "./lib/state/appMode";
+import { StatusBar } from "./components/StatusBar";
 import { generateContentHash } from "./lib/db/phraseStore";
+import "./lib/status/ProviderUsageTracker"; // Initialize provider usage tracking
 import { AuthScreen } from "./features/auth/AuthScreen";
 import { OAuthCallback } from "./features/auth/OAuthCallback";
 import { detectFileFormat } from "./lib/utils/fileFormat";
@@ -884,6 +886,7 @@ function MainContent(props: {
                     sourceFile={sourceFile || undefined}
                 />
             )}
+            <StatusBar />
         </div>
     );
 }

@@ -260,6 +260,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 // Save to localStorage as backup (includes caps and provider keys)
                 localStorage.setItem("readnlearn-settings", JSON.stringify(settings));
 
+                // Dispatch event to notify other components of settings change
+                window.dispatchEvent(new CustomEvent("readnlearn:settings-updated"));
+
                 // Save core UI settings to Supabase KV (no caps or provider keys)
                 const {
                     data: { user },

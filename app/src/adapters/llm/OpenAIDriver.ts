@@ -61,7 +61,7 @@ export class OpenAIDriver implements LlmBaseAdapter {
     private apiKey: string;
     private baseUrl: string;
     private cache: boolean;
-    private dailyCap: number;
+    public dailyCap: number;
     public readonly modelCost: { input: number; output: number };
 
     constructor(model: string = "gpt-5-nano") {

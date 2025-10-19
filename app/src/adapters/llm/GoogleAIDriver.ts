@@ -28,7 +28,7 @@ export class GoogleAIDriver implements LlmBaseAdapter {
     private apiKey: string;
     private baseUrl: string;
     private cache: boolean;
-    private dailyCap: number;
+    public dailyCap: number;
     public readonly modelCost: { input: number; output: number };
 
     constructor(model: string = "gemini-2.5-flash-lite") {

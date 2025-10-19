@@ -110,9 +110,31 @@ async function generateStoryForPhrase(
     phrase: { id?: string; text: string; translation: string; context?: string },
     config: StoryGenerationConfig,
 ): Promise<StoryResult> {
-    // Create drivers (will be loaded from settings in real implementation)
+    // Create drivers and load settings
     const openaiDriver = new OpenAIDriver();
     const googleDriver = new GoogleAIDriver();
+
+    // Load user settings and update daily caps
+    try {
+        const settingsData = localStorage.getItem("readnlearn-settings");
+        if (settingsData) {
+            const settings = JSON.parse(settingsData);
+
+            // Update daily caps from settings (use user-defined values)
+            const openaiCap = settings.dailyCapOpenAI || 50; // Default $50 if not set
+            const googleCap = settings.dailyCapGoogle || 50; // Default $50 if not set
+
+            openaiDriver.updateDailyCap(openaiCap);
+            googleDriver.updateDailyCap(googleCap);
+
+            console.log("StoryGenerator: Loaded settings", {
+                openaiCap,
+                googleCap,
+            });
+        }
+    } catch (error) {
+        console.warn("StoryGenerator: Failed to load settings:", error);
+    }
 
     // Create story adapter with available drivers
     const storyAdapter = new StoryAdapter([openaiDriver, googleDriver]);

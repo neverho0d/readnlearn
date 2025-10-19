@@ -47,7 +47,16 @@ export class TranslationAdapter {
         for (const driver of this.drivers) {
             try {
                 // Check if driver is within limits
-                if (!(await driver.isWithinDailyLimit())) {
+                const isWithinLimit = await driver.isWithinDailyLimit();
+                const usage = await driver.getUsage();
+                console.log(`Driver ${driver.provider} limit check:`, {
+                    isWithinLimit,
+                    currentUsage: usage.costUsd,
+                    dailyCap: (driver as unknown as { dailyCap: number }).dailyCap,
+                    remaining: (driver as unknown as { dailyCap: number }).dailyCap - usage.costUsd,
+                });
+
+                if (!isWithinLimit) {
                     console.log(`Driver ${driver.provider} exceeded daily limit, trying next...`);
                     continue;
                 }

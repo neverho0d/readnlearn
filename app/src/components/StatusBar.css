@@ -1,0 +1,264 @@
+/**
+ * Status Bar Styling
+ * 
+ * Styles for the status bar and task details popup.
+ * Designed to be non-intrusive and always visible at the bottom.
+ */
+
+/* Main Status Bar */
+.status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 11px;
+    z-index: 1000;
+    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-bar-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+/* Task Counter Button */
+.task-counter {
+    background: none;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.task-counter:hover:not(:disabled) {
+    background: var(--hover);
+}
+
+.task-counter:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Task Loader Animation */
+.task-loader {
+    animation: spin 1s linear infinite;
+    font-size: 12px;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Provider Usage Display */
+.provider-usage {
+    color: var(--text-secondary);
+    font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.provider-item {
+    white-space: nowrap;
+}
+
+.provider-separator {
+    color: var(--border);
+}
+
+/* Task Details Popup */
+.task-details-popup {
+    position: fixed;
+    bottom: 20px;
+    right: 16px;
+    width: 400px;
+    max-height: 300px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    overflow: hidden;
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--background-secondary);
+}
+
+.popup-header h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.close-button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    transition: background-color 0.2s ease;
+}
+
+.close-button:hover {
+    background: var(--hover);
+    color: var(--text);
+}
+
+/* Task List */
+.task-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.task-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.2s ease;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+.task-item:hover {
+    background: var(--hover);
+}
+
+.task-item.completed {
+    opacity: 0.7;
+}
+
+.task-item.failed {
+    background: var(--error-bg);
+    border-left: 3px solid var(--error-color);
+}
+
+.task-item.processing {
+    background: var(--info-bg);
+    border-left: 3px solid var(--info-color);
+}
+
+.task-item.pending {
+    background: var(--warning-bg);
+    border-left: 3px solid var(--warning-color);
+}
+
+/* Task Item Content */
+.task-icon {
+    margin-right: 12px;
+    font-size: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.task-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-type {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.task-phrase {
+    color: var(--text-secondary);
+    font-size: 10px;
+    margin-bottom: 2px;
+    word-break: break-word;
+    font-style: italic;
+}
+
+.task-error {
+    color: var(--error-color);
+    font-size: 9px;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.task-completed {
+    color: var(--success-color);
+    font-size: 9px;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.no-tasks {
+    padding: 20px 14px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 11px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .status-bar {
+        padding: 0 8px;
+        font-size: 11px;
+    }
+
+    .task-details-popup {
+        right: 8px;
+        left: 8px;
+        width: auto;
+        max-width: calc(100vw - 16px);
+    }
+
+    .provider-usage {
+        font-size: 10px;
+        gap: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .status-bar-content {
+        flex-direction: column;
+        gap: 4px;
+        height: auto;
+        padding: 4px 0;
+    }
+
+    .status-bar {
+        height: auto;
+        min-height: 20px;
+    }
+
+    .provider-usage {
+        order: -1;
+    }
+}

@@ -10,6 +10,7 @@ import { supabase } from "../supabase/client";
 import { migrateStoryTables, checkStoryTablesExist } from "../db/migrateStories";
 import { PhraseStory } from "./storyGenerator";
 import { generateStoryForContent } from "./storyGenerator.js";
+import { statusStore } from "../status/StatusStore";
 
 export interface StoryGenerationJob {
     id: string;
@@ -307,10 +308,18 @@ export async function processStoryQueue(): Promise<void> {
             return;
         }
 
+        // Add status task for story generation
+        const taskId = statusStore.addTask({
+            type: "story_generation",
+            status: "processing",
+            phrase: `Generating stories for ${phraseIds.length} phrases`,
+            phraseId: phraseIds[0] || "unknown",
+        });
+
         try {
             // Check if stories table exists and has correct schema
             console.log("Checking stories table schema...");
-            const { data: tableCheck, error: tableError } = await supabase
+            const { error: tableError } = await supabase
                 .from("stories")
                 .select("phrase_id")
                 .limit(1);
@@ -328,6 +337,7 @@ export async function processStoryQueue(): Promise<void> {
 
             // Generate story
             console.log("Generating story for content:", job.contentHash);
+
             const storyResult = await generateStoryForContent(
                 job.contentHash,
                 phraseIds,
@@ -390,10 +400,20 @@ export async function processStoryQueue(): Promise<void> {
 
             console.log("Story generation completed:", job.id);
 
+            // Mark story generation task as completed
+            statusStore.completeTask(taskId, "completed");
+
             // Process next job
             setTimeout(() => processStoryQueue(), 1000);
         } catch (error) {
             console.error("Story generation failed:", error);
+
+            // Mark story generation task as failed
+            statusStore.completeTask(
+                taskId,
+                "failed",
+                error instanceof Error ? error.message : "Unknown error",
+            );
 
             // Update job status to failed
             await supabase
