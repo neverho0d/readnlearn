@@ -331,6 +331,7 @@ export const PhraseListView: React.FC<PhraseListViewProps> = ({
                             explanation={r.explanation}
                             tags={tags}
                             isTranslating={translatingPhrases.has(r.id)}
+                            showActions={false} // No actions menu in Reading mode
                             onJumpToPhrase={(phraseId) => {
                                 try {
                                     const ev = new CustomEvent(

@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
-import { StoryModal } from "../StoryModal";
 
 export interface PhraseCardProps {
     id: string;
@@ -19,8 +18,6 @@ export interface PhraseCardProps {
     isTranslating?: boolean;
     // eslint-disable-next-line no-unused-vars
     onJumpToPhrase?: (phraseId: string) => void;
-    onEdit?: (phraseId: string) => void;
-    onDelete?: (phraseId: string) => void;
 }
 
 export const PhraseCard: React.FC<PhraseCardProps> = ({
@@ -31,8 +28,6 @@ export const PhraseCard: React.FC<PhraseCardProps> = ({
     tags = [],
     isTranslating = false,
     onJumpToPhrase,
-    onEdit,
-    onDelete,
 }) => {
     // Per-phrase expand/collapse state
     const [expandedPhrase, setExpandedPhrase] = useState(false);
@@ -41,7 +36,6 @@ export const PhraseCard: React.FC<PhraseCardProps> = ({
 
     // Dropdown menu state
     const [showDropdown, setShowDropdown] = useState(false);
-    const [showStoryModal, setShowStoryModal] = useState(false);
 
     const toggleExpand = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
         setter((prev) => !prev);
@@ -63,7 +57,7 @@ export const PhraseCard: React.FC<PhraseCardProps> = ({
                 // Clear any previous inline color to avoid stacking residuals
                 element.style.backgroundColor = "";
                 const computed = getComputedStyle(element).backgroundColor;
-                element.style.backgroundColor = "rgba(180,180,180,0.25)";
+                element.style.backgroundColor = "var(--bg-hover)";
                 setTimeout(() => {
                     element.style.backgroundColor = computed;
                 }, 1000);
@@ -255,124 +249,12 @@ export const PhraseCard: React.FC<PhraseCardProps> = ({
                     }}
                 >
                     <span style={{ width: 24, color: "var(--muted)", fontSize: 12 }}>#</span>
-                    <div style={{ flex: 1, color: "#7dd3fc", fontSize: "0.92em" }}>
+                    <div style={{ flex: 1, color: "var(--link-blue)", fontSize: "0.92em" }}>
                         {`#${tags.join(", #")}`}
                     </div>
                     <div style={{ width: 24 }} />
                 </div>
             )}
-
-            {/* Row 5: Actions Menu */}
-            <div
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-end",
-                    marginTop: 8,
-                    position: "relative",
-                }}
-            >
-                <button
-                    onClick={() => setShowDropdown(!showDropdown)}
-                    style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--text-secondary)",
-                        cursor: "pointer",
-                        padding: "4px",
-                        borderRadius: "4px",
-                        fontSize: "16px",
-                    }}
-                    title="More options"
-                >
-                    ⋯
-                </button>
-
-                {/* Dropdown Menu */}
-                {showDropdown && (
-                    <div
-                        ref={dropdownRef}
-                        style={{
-                            position: "absolute",
-                            top: "100%",
-                            right: 0,
-                            backgroundColor: "var(--background-secondary)",
-                            border: "1px solid var(--border-color)",
-                            borderRadius: "4px",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                            zIndex: 1000,
-                            minWidth: "150px",
-                        }}
-                    >
-                        <button
-                            onClick={() => {
-                                setShowStoryModal(true);
-                                setShowDropdown(false);
-                            }}
-                            style={{
-                                width: "100%",
-                                padding: "8px 12px",
-                                background: "none",
-                                border: "none",
-                                textAlign: "left",
-                                cursor: "pointer",
-                                color: "var(--text-primary)",
-                                fontSize: "14px",
-                            }}
-                        >
-                            Generate Story
-                        </button>
-                        {onEdit && (
-                            <button
-                                onClick={() => {
-                                    onEdit(id);
-                                    setShowDropdown(false);
-                                }}
-                                style={{
-                                    width: "100%",
-                                    padding: "8px 12px",
-                                    background: "none",
-                                    border: "none",
-                                    textAlign: "left",
-                                    cursor: "pointer",
-                                    color: "var(--text-primary)",
-                                    fontSize: "14px",
-                                }}
-                            >
-                                Edit
-                            </button>
-                        )}
-                        {onDelete && (
-                            <button
-                                onClick={() => {
-                                    onDelete(id);
-                                    setShowDropdown(false);
-                                }}
-                                style={{
-                                    width: "100%",
-                                    padding: "8px 12px",
-                                    background: "none",
-                                    border: "none",
-                                    textAlign: "left",
-                                    cursor: "pointer",
-                                    color: "var(--error-color)",
-                                    fontSize: "14px",
-                                }}
-                            >
-                                Remove
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Story Modal */}
-            <StoryModal
-                isOpen={showStoryModal}
-                onClose={() => setShowStoryModal(false)}
-                phraseId={id}
-                phraseText={text}
-            />
         </div>
     );
 };

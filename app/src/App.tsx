@@ -60,6 +60,7 @@ function AppContent() {
                     height: "100vh",
                     backgroundColor: "var(--bg-primary)",
                     color: "var(--text-primary)",
+                    opacity: 1,
                 }}
             >
                 <div style={{ textAlign: "center" }}>
@@ -440,6 +441,7 @@ function MainAppContent() {
                                     right: 0,
                                     bottom: 0,
                                     backgroundColor: "var(--overlay-bg)",
+                                    opacity: 1,
                                     zIndex: 99999,
                                     display: "flex",
                                     flexDirection: "column",
@@ -1008,7 +1010,7 @@ function ProviderSettingsDialog({ onClose }: { onClose: () => void }) {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: "rgba(0,0,0,0.5)",
+                background: "var(--overlay-bg)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1026,7 +1028,7 @@ function ProviderSettingsDialog({ onClose }: { onClose: () => void }) {
                     padding: 16,
                     borderRadius: 8,
                     minWidth: 420,
-                    boxShadow: "0 10px 24px rgba(0,0,0,0.4)",
+                    boxShadow: `0 10px 24px var(--dropdown-shadow)`,
                 }}
             >
                 <h3 style={{ margin: "0 0 12px 0" }}>Provider Settings</h3>

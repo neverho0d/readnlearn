@@ -117,7 +117,7 @@ export function StoryView({
                                 fontSize: "0.8rem",
                                 whiteSpace: "nowrap",
                                 zIndex: 10,
-                                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                                boxShadow: `0 2px 4px var(--dropdown-shadow)`,
                             }}
                         >
                             {gloss}

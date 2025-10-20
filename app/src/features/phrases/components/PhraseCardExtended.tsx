@@ -39,6 +39,7 @@ export const PhraseCardExtended: React.FC<PhraseCardExtendedProps> = ({
             <PhraseCard
                 {...phraseCardProps}
                 isTranslating={isTranslating}
+                showActions={true} // Show actions menu in Dictionary mode
                 onJumpToPhrase={onJumpToPhrase}
             />
         </div>

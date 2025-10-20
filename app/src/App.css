@@ -1,17 +1,21 @@
 :root[data-theme="light"] {
     --bg: #f7fafc;
+    --bg-primary: #f7fafc;
+    --bg-secondary: #ffffff;
     --panel: #ffffff;
     --text: #2d3748;
+    --text-primary: #2d3748;
+    --text-secondary: #4a5568;
     --muted: #4a5568;
     --border: #e2e8f0;
     --border-color: #e2e8f0;
     --primary: #3182ce;
     --primary-contrast: #ffffff;
-    --topbar-bg: #1a202c;
-    --topbar-text: #ffffff;
+    --topbar-bg: var(--panel);
+    --topbar-text: var(--text);
     --bg-hover: #d7dbdf;
-    --overlay-bg: #1a1a1a;
-    --overlay-text: #ffffff;
+    --overlay-bg: var(--bg-primary);
+    --overlay-text: var(--text-primary);
     --link-blue: #1a73e8; /* Google Search blue for file names */
     --success-bg: #d4edda;
     --success-text: #155724;
@@ -22,13 +26,31 @@
     --warning-bg: #fff3cd;
     --info-color: #0c5460;
     --info-bg: #d1ecf1;
+    /* Additional theme variables */
+    --background-primary: #f7fafc;
+    --background-secondary: #ffffff;
+    --dropdown-bg: #ffffff;
+    --dropdown-border: #e2e8f0;
+    --dropdown-shadow: rgba(0, 0, 0, 0.15);
+    --tab-active-bg: #4a5568;
+    --tab-active-text: #ffffff;
+    --tab-inactive-text: #a0aec0;
+    /* Hover background for menu items/popups */
+    --menu-hover-bg: var(--bg-hover);
+    --select-bg: #f7fafc;
+    --select-text: #2d3748;
+    --select-border: #e2e8f0;
 }
 
 :root[data-theme="dark"] {
     /* Neutral gray palette (no blue bias) */
     --bg: #0f1115;
+    --bg-primary: #0f1115;
+    --bg-secondary: #14161a;
     --panel: #14161a;
     --text: #e5e7eb;
+    --text-primary: #e5e7eb;
+    --text-secondary: #a1a1aa;
     --muted: #a1a1aa;
     --border: #31343a;
     --border-color: #31343a;
@@ -37,8 +59,8 @@
     --topbar-bg: #0e1013;
     --topbar-text: #e5e7eb;
     --bg-hover: #1f2937;
-    --overlay-bg: #000000;
-    --overlay-text: #ffffff;
+    --overlay-bg: var(--bg-primary);
+    --overlay-text: var(--text-primary);
     --link-blue: #8ab4f8; /* Lighter blue for dark theme */
     --success-bg: #1a4d1a;
     --success-text: #90ee90;
@@ -49,11 +71,49 @@
     --warning-bg: #4d3d1a;
     --info-color: #87ceeb;
     --info-bg: #1a3d4d;
+    /* Additional theme variables */
+    --background-primary: #0f1115;
+    --background-secondary: #14161a;
+    --dropdown-bg: #1f2937;
+    --dropdown-border: #374151;
+    --dropdown-shadow: rgba(0, 0, 0, 0.35);
+    /* Hover background for menu items/popups: must contrast with --dropdown-bg */
+    --menu-hover-bg: #2a3442;
+    --tab-active-bg: #4a5568;
+    --tab-active-text: #ffffff;
+    --tab-inactive-text: #a0aec0;
+    --select-bg: #1f2937;
+    --select-text: #e5e7eb;
+    --select-border: #374151;
 }
 
 body {
     background: var(--bg);
     color: var(--text);
+}
+
+/* Theme-aware select elements */
+select {
+    background: var(--select-bg) !important;
+    color: var(--select-text) !important;
+    border: 1px solid var(--select-border) !important;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px var(--primary) !important;
+}
+
+select option {
+    background: var(--select-bg) !important;
+    color: var(--select-text) !important;
+}
+
+select optgroup {
+    background: var(--select-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--select-border) !important;
 }
 
 /* Loading spinner animation */
@@ -141,6 +201,14 @@ button {
     box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
 }
 
+li button,
+.dropdown-option,
+.lang-menu-option {
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
 /* Icon-only buttons should never have their own shadows/borders */
 .icon-button {
     background: transparent !important;
@@ -159,6 +227,29 @@ button:hover {
 button:active {
     border-color: #396cd8;
     background-color: #e8e8e8;
+}
+
+.lang-indicator-button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 6px 10px;
+    border-radius: 4px;
+    color: var(--topbar-text);
+    font-size: 12px;
+}
+
+.lang-indicator-button:hover {
+    background-color: var(--menu-hover-bg) !important;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2) !important;
+}
+.lang-menu-option {
+    padding: 6px 8px;
+    font-size: 12px;
+}
+
+.lang-menu-option:hover {
+    background-color: var(--menu-hover-bg) !important;
 }
 
 input,

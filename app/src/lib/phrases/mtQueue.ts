@@ -114,8 +114,43 @@ export async function queueTranslate(job: TranslateJob): Promise<void> {
         // Update the phrase with the translation result
         await updatePhraseTranslation(job.phraseId, result.translation, result.explanation);
 
-        // Mark translation task as completed
+        // Mark translation task as completed FIRST
         statusStore.completeTask(taskId, "completed");
+
+        // Dispatch event to notify UI that translation finished
+        try {
+            window.dispatchEvent(
+                new CustomEvent("readnlearn:translation-finished", {
+                    detail: { phraseId: job.phraseId },
+                }),
+            );
+        } catch {
+            // ignore event dispatch errors
+        }
+
+        // After translation UI update, generate cards/clozes for this phrase
+        let cardTaskId: string | undefined;
+        try {
+            const { generateCardsForNewPhrase } = await import("../cards/cardGenerator");
+            const { statusStore } = await import("../status/StatusStore");
+
+            // Add card generation task
+            cardTaskId = statusStore.addTask({
+                type: "card_generation",
+                status: "processing",
+                phrase: `Generating cards for: ${job.text.substring(0, 30)}...`,
+                phraseId: job.phraseId,
+            });
+
+            await generateCardsForNewPhrase(job.phraseId);
+            statusStore.completeTask(cardTaskId, "completed");
+        } catch (cardErr) {
+            console.warn("Auto card generation failed:", cardErr);
+            if (cardTaskId) {
+                const { statusStore } = await import("../status/StatusStore");
+                statusStore.completeTask(cardTaskId, "failed");
+            }
+        }
     } catch (error) {
         console.error("Translation failed:", error);
 
@@ -131,17 +166,6 @@ export async function queueTranslate(job: TranslateJob): Promise<void> {
     } finally {
         inFlight.delete(key);
         translatingPhrases.delete(job.phraseId);
-
-        // Dispatch event to notify UI that translation finished
-        try {
-            window.dispatchEvent(
-                new CustomEvent("readnlearn:translation-finished", {
-                    detail: { phraseId: job.phraseId },
-                }),
-            );
-        } catch {
-            // ignore event dispatch errors
-        }
     }
 }
 

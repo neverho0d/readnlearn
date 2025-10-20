@@ -19,7 +19,7 @@
     padding: 0 12px;
     font-size: 11px;
     z-index: 1000;
-    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -1px 4px var(--dropdown-shadow);
 }
 
 .status-bar-content {
@@ -97,7 +97,7 @@
     background: var(--panel);
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px var(--dropdown-shadow);
     z-index: 1001;
     overflow: hidden;
 }

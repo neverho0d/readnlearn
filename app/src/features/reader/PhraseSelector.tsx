@@ -45,7 +45,7 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
                 maxWidth: "min(92vw, 480px)",
                 width: "480px",
                 zIndex: 1100,
-                boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                boxShadow: `0 10px 25px var(--dropdown-shadow)`,
             }}
         >
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -118,7 +118,9 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
                         disabled={!phrase.trim()}
                         style={{
                             padding: "6px 12px",
-                            backgroundColor: phrase.trim() ? "var(--primary)" : "#e2e8f0",
+                            backgroundColor: phrase.trim()
+                                ? "var(--primary)"
+                                : "var(--border-color)",
                             color: "var(--primary-contrast)",
                             border: "none",
                             borderRadius: "44px",

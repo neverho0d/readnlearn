@@ -68,7 +68,7 @@ export function ToastComponent({ toast, onDismiss }: ToastProps) {
             position: "relative" as const,
             padding: "1rem",
             borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+            boxShadow: `0 4px 12px var(--dropdown-shadow)`,
             border: "1px solid",
             maxWidth: "400px",
             transform: isVisible ? "translateX(0)" : "translateX(100%)",

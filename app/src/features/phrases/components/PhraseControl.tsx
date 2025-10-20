@@ -7,13 +7,15 @@
 
 import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEllipsis, faFile } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faFile, faMagic } from "@fortawesome/free-solid-svg-icons";
 import { faPenToSquare, faTrashCan } from "@fortawesome/free-regular-svg-icons";
 
 export interface PhraseControlProps {
     phraseId: string;
     sourceFile?: string;
+    // eslint-disable-next-line no-unused-vars
     onEdit?: (phraseId: string) => void;
+    // eslint-disable-next-line no-unused-vars
     onRemove?: (phraseId: string) => void;
 }
 
@@ -66,38 +68,93 @@ export const PhraseControl: React.FC<PhraseControlProps> = ({
                                 position: "absolute",
                                 right: 0,
                                 top: 22,
-                                background: "var(--bg)",
-                                border: "1px solid var(--border-color)",
+                                background: "var(--dropdown-bg)",
+                                border: "1px solid var(--dropdown-border)",
                                 borderRadius: 6,
-                                boxShadow: "none",
+                                boxShadow: "0 6px 18px var(--dropdown-shadow)",
                                 zIndex: 10,
                                 minWidth: 140,
                                 overflow: "hidden",
                             }}
                             onMouseLeave={() => setMenuOpen(false)}
                         >
+                            {/* Manual story generation (dictionary mode only) */}
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        setMenuOpen(false);
+                                        const { generateStoryForPhrase } = await import(
+                                            "../../../lib/stories/storyGenerator"
+                                        );
+                                        const { statusStore } = await import(
+                                            "../../../lib/status/StatusStore"
+                                        );
+                                        const taskId = statusStore.addTask({
+                                            type: "story_generation",
+                                            phrase: "Generating story…",
+                                            phraseId: phraseId,
+                                            status: "processing",
+                                        });
+                                        await generateStoryForPhrase(phraseId, "generate");
+                                        statusStore.completeTask(taskId, "completed");
+                                    } catch (e) {
+                                        console.error(e);
+                                        const { statusStore } = await import(
+                                            "../../../lib/status/StatusStore"
+                                        );
+                                        statusStore.addTask({
+                                            type: "story_generation",
+                                            phrase: "Story generation failed",
+                                            phraseId: phraseId,
+                                            status: "failed",
+                                        });
+                                    }
+                                }}
+                                className="dropdown-option"
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    width: "100%",
+                                    background: "transparent",
+                                    color: "var(--text-primary)",
+                                    padding: "6px 8px",
+                                    cursor: "pointer",
+                                    textAlign: "left",
+                                    fontSize: 12,
+                                }}
+                                onMouseEnter={(e) =>
+                                    (e.currentTarget.style.background = "var(--menu-hover-bg)")
+                                }
+                                onMouseLeave={(e) =>
+                                    (e.currentTarget.style.background = "transparent")
+                                }
+                            >
+                                <FontAwesomeIcon icon={faMagic} />
+                                <span>Generate Story</span>
+                            </button>
+
                             {onEdit && (
                                 <button
                                     onClick={() => {
                                         setMenuOpen(false);
                                         onEdit(phraseId);
                                     }}
+                                    className="dropdown-option"
                                     style={{
                                         display: "flex",
                                         alignItems: "center",
                                         gap: 8,
                                         width: "100%",
                                         background: "transparent",
-                                        border: "none",
-                                        boxShadow: "none",
-                                        padding: "8px 10px",
-                                        color: "var(--text)",
+                                        color: "var(--text-primary)",
+                                        padding: "6px 8px",
                                         cursor: "pointer",
                                         textAlign: "left",
-                                        transition: "background 0.15s ease",
+                                        fontSize: 12,
                                     }}
                                     onMouseEnter={(e) =>
-                                        (e.currentTarget.style.background = "var(--bg-hover)")
+                                        (e.currentTarget.style.background = "var(--menu-hover-bg)")
                                     }
                                     onMouseLeave={(e) =>
                                         (e.currentTarget.style.background = "transparent")
@@ -113,22 +170,21 @@ export const PhraseControl: React.FC<PhraseControlProps> = ({
                                         setMenuOpen(false);
                                         onRemove(phraseId);
                                     }}
+                                    className="dropdown-option"
                                     style={{
                                         display: "flex",
                                         alignItems: "center",
                                         gap: 8,
                                         width: "100%",
                                         background: "transparent",
-                                        border: "none",
-                                        boxShadow: "none",
-                                        padding: "8px 10px",
-                                        color: "var(--danger)",
+                                        color: "var(--error-color)",
+                                        padding: "6px 8px",
                                         cursor: "pointer",
                                         textAlign: "left",
-                                        transition: "background 0.15s ease",
+                                        fontSize: 12,
                                     }}
                                     onMouseEnter={(e) =>
-                                        (e.currentTarget.style.background = "var(--bg-hover)")
+                                        (e.currentTarget.style.background = "var(--menu-hover-bg)")
                                     }
                                     onMouseLeave={(e) =>
                                         (e.currentTarget.style.background = "transparent")

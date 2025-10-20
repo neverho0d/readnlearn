@@ -86,7 +86,7 @@ export function StoryModal({ isOpen, onClose, phraseId, phraseText }: StoryModal
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                backgroundColor: "var(--overlay-bg)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

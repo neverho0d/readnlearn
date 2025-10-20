@@ -48,7 +48,7 @@ export const PasswordReset: React.FC<PasswordResetProps> = ({ onSwitchToLogin })
                     padding: "2rem",
                     backgroundColor: "var(--bg-secondary)",
                     borderRadius: "8px",
-                    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                    boxShadow: `0 4px 6px var(--dropdown-shadow)`,
                     textAlign: "center",
                 }}
             >

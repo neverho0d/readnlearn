@@ -80,7 +80,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
                     padding: "2rem",
                     backgroundColor: "var(--bg-secondary)",
                     borderRadius: "8px",
-                    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                    boxShadow: `0 4px 6px var(--dropdown-shadow)`,
                     textAlign: "center",
                 }}
             >
@@ -270,8 +270,8 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
                 style={{
                     width: "100%",
                     padding: "0.75rem",
-                    backgroundColor: "#24292e",
-                    color: "white",
+                    backgroundColor: "var(--primary)",
+                    color: "var(--primary-contrast)",
                     border: "none",
                     borderRadius: "4px",
                     cursor: loading ? "not-allowed" : "pointer",

@@ -48,7 +48,7 @@ export const ProviderSettingsDialog: React.FC<ProviderSettingsDialogProps> = ({ 
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: "rgba(0,0,0,0.5)",
+                background: "var(--overlay-bg)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -68,7 +68,7 @@ export const ProviderSettingsDialog: React.FC<ProviderSettingsDialogProps> = ({ 
                     minWidth: 420,
                     maxWidth: 560,
                     width: "90%",
-                    boxShadow: "0 10px 24px rgba(0,0,0,0.4)",
+                    boxShadow: `0 10px 24px var(--dropdown-shadow)`,
                 }}
             >
                 <h3 style={{ margin: "0 0 12px 0" }}>Provider Settings</h3>

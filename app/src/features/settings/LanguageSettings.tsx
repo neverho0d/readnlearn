@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBookOpen, faBook, faGraduationCap, faCog } from "@fortawesome/free-solid-svg-icons";
 import { useLanguageDetection } from "../../lib/hooks/useLanguageDetection";
 import { ProviderSettingsDialog } from "./ProviderSettingsDialog";
+import ThemedSelect from "../../components/ui/Select";
 
 interface LanguageSettingsProps {
     isLoading?: boolean;
@@ -136,7 +137,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                 backgroundColor: "var(--topbar-bg)",
                 color: "var(--topbar-text)",
                 padding: "8px 16px",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                borderBottom: "1px solid var(--border-color)",
                 zIndex: 1000,
                 display: "flex",
                 alignItems: "center",
@@ -153,9 +154,13 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     <button
                         onClick={() => setMode("reading")}
                         style={{
-                            backgroundColor: mode === "reading" ? "#4a5568" : "transparent",
-                            color: mode === "reading" ? "#ffffff" : "#a0aec0",
-                            border: "1px solid #4a5568",
+                            backgroundColor:
+                                mode === "reading" ? "var(--tab-active-bg)" : "transparent",
+                            color:
+                                mode === "reading"
+                                    ? "var(--tab-active-text)"
+                                    : "var(--tab-inactive-text)",
+                            border: "1px solid var(--tab-active-bg)",
                             borderRadius: 4,
                             padding: "6px 8px",
                             fontSize: 12,
@@ -175,9 +180,13 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     <button
                         onClick={() => setMode("dictionary")}
                         style={{
-                            backgroundColor: mode === "dictionary" ? "#4a5568" : "transparent",
-                            color: mode === "dictionary" ? "#ffffff" : "#a0aec0",
-                            border: "1px solid #4a5568",
+                            backgroundColor:
+                                mode === "dictionary" ? "var(--tab-active-bg)" : "transparent",
+                            color:
+                                mode === "dictionary"
+                                    ? "var(--tab-active-text)"
+                                    : "var(--topbar-text)",
+                            border: "1px solid var(--tab-active-bg)",
                             borderRadius: 4,
                             padding: "6px 8px",
                             fontSize: 12,
@@ -197,9 +206,13 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     <button
                         onClick={() => setMode("learning")}
                         style={{
-                            backgroundColor: mode === "learning" ? "#4a5568" : "transparent",
-                            color: mode === "learning" ? "#ffffff" : "#a0aec0",
-                            border: "1px solid #4a5568",
+                            backgroundColor:
+                                mode === "learning" ? "var(--tab-active-bg)" : "transparent",
+                            color:
+                                mode === "learning"
+                                    ? "var(--tab-active-text)"
+                                    : "var(--topbar-text)",
+                            border: "1px solid var(--tab-active-bg)",
                             borderRadius: 4,
                             padding: "6px 8px",
                             fontSize: 12,
@@ -221,33 +234,31 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                 {/* Font selector */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <label style={{ color: "#a0aec0", fontSize: 12 }}>Font</label>
-                    <select
+                    <label style={{ color: "var(--text-secondary)", fontSize: 12 }}>Font</label>
+                    <ThemedSelect
                         value={settings.font}
-                        onChange={(e) => updateSettings({ font: e.target.value })}
-                        style={{
-                            background: "#1f2937",
-                            color: "#e5e7eb",
-                            border: "1px solid #374151",
-                            borderRadius: 4,
-                            padding: "4px 8px",
-                            fontSize: 12,
-                        }}
+                        onChange={(v) => updateSettings({ font: v })}
+                        options={[
+                            {
+                                label: "Inter",
+                                value: "InterVarLocal, Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif",
+                            },
+                            {
+                                label: "Noto Sans",
+                                value: "NotoSansLocal, Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif",
+                            },
+                            {
+                                label: "Source Serif Pro",
+                                value: "SourceSerifLocal, Source Serif Pro, Georgia, Cambria, Times New Roman, Times, serif",
+                            },
+                            {
+                                label: "Merriweather",
+                                value: "MerriweatherLocal, Merriweather, Georgia, Cambria, Times New Roman, Times, serif",
+                            },
+                        ]}
+                        buttonWidthPx={170}
                         title="Reader font"
-                    >
-                        <option value="InterVarLocal, Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif">
-                            Inter
-                        </option>
-                        <option value="NotoSansLocal, Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif">
-                            Noto Sans
-                        </option>
-                        <option value="SourceSerifLocal, Source Serif Pro, Georgia, Cambria, Times New Roman, Times, serif">
-                            Source Serif Pro
-                        </option>
-                        <option value="MerriweatherLocal, Merriweather, Georgia, Cambria, Times New Roman, Times, serif">
-                            Merriweather
-                        </option>
-                    </select>
+                    />
                 </div>
 
                 {/* Font size control */}
@@ -298,12 +309,6 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                             padding: "4px 8px",
                             cursor: "pointer",
                         }}
-                        onMouseEnter={(e) =>
-                            (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)")
-                        }
-                        onMouseLeave={(e) =>
-                            (e.currentTarget.style.backgroundColor = "transparent")
-                        }
                         onClick={(e) => {
                             e.stopPropagation();
                             setShowL2Menu((s) => !s);
@@ -317,36 +322,19 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                                 setShowL1Menu((s) => !s);
                                 setShowL2Menu(false);
                             }}
-                            style={{
-                                background: "transparent",
-                                border: "none",
-                                color: "var(--topbar-text)",
-                                cursor: "pointer",
-                                padding: "0",
-                                fontSize: 12,
-                            }}
+                            className="lang-indicator-button"
                             title={t.l1Label}
                         >
                             {getLanguageName(settings.l1)}
                         </button>
-                        <span style={{ color: "#a0aec0" }}>→</span>
+                        <span style={{ color: "var(--text-secondary)" }}>→</span>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setShowL2Menu((s) => !s);
                                 setShowL1Menu(false);
                             }}
-                            style={{
-                                background: "transparent",
-                                border: "none",
-                                color: "var(--topbar-text)",
-                                cursor: "pointer",
-                                padding: "0",
-                                fontSize: 12,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "4px",
-                            }}
+                            className="lang-indicator-button"
                             title={t.l2Label}
                         >
                             {isDetecting ? (
@@ -376,13 +364,13 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                                 position: "absolute",
                                 top: 30,
                                 left: 0,
-                                background: "#1f2937",
-                                border: "1px solid #374151",
+                                background: "var(--dropdown-bg)",
+                                border: "1px solid var(--dropdown-border)",
                                 borderRadius: 6,
                                 padding: 6,
                                 maxHeight: 260,
                                 overflow: "auto",
-                                boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+                                boxShadow: `0 6px 18px var(--dropdown-shadow)`,
                                 zIndex: 2000,
                                 minWidth: 180,
                             }}
@@ -394,15 +382,13 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                                         updateSettings({ l1: lang.code });
                                         closeMenus();
                                     }}
+                                    className="lang-menu-option"
                                     style={{
                                         display: "block",
                                         width: "100%",
                                         textAlign: "left",
                                         background: "transparent",
-                                        border: "none",
-                                        color: "#e5e7eb",
-                                        padding: "6px 8px",
-                                        cursor: "pointer",
+                                        color: "var(--text-primary)",
                                     }}
                                 >
                                     {lang.nativeName}
@@ -418,13 +404,13 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                                 position: "absolute",
                                 top: 30,
                                 left: 0,
-                                background: "#1f2937",
-                                border: "1px solid #374151",
+                                background: "var(--dropdown-bg)",
+                                border: "1px solid var(--dropdown-border)",
                                 borderRadius: 6,
                                 padding: 6,
                                 maxHeight: 260,
                                 overflow: "auto",
-                                boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+                                boxShadow: `0 6px 18px var(--dropdown-shadow)`,
                                 zIndex: 2000,
                                 minWidth: 200,
                             }}
@@ -434,16 +420,13 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                                     updateSettings({ l2AutoDetect: true });
                                     closeMenus();
                                 }}
+                                className="lang-menu-option"
                                 style={{
                                     display: "block",
                                     width: "100%",
                                     textAlign: "left",
                                     background: "transparent",
-                                    border: "none",
-                                    color: "#e5e7eb",
-                                    padding: "6px 8px",
-                                    cursor: "pointer",
-                                    fontWeight: 600,
+                                    color: "var(--text-primary)",
                                 }}
                             >
                                 Auto
@@ -455,15 +438,13 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                                         updateSettings({ l2AutoDetect: false, l2: lang.code });
                                         closeMenus();
                                     }}
+                                    className="lang-menu-option"
                                     style={{
                                         display: "block",
                                         width: "100%",
                                         textAlign: "left",
                                         background: "transparent",
-                                        border: "none",
-                                        color: "#e5e7eb",
-                                        padding: "6px 8px",
-                                        cursor: "pointer",
+                                        color: "var(--text-primary)",
                                     }}
                                 >
                                     {lang.nativeName}
@@ -477,7 +458,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                         onClick={handlePickFile}
                         disabled={isLoading}
                         style={{
-                            backgroundColor: isLoading ? "#4a5568" : "var(--primary)",
+                            backgroundColor: isLoading ? "var(--tab-active-bg)" : "var(--primary)",
                             color: "var(--primary-contrast)",
                             border: "none",
                             borderRadius: "4px",
@@ -513,27 +494,23 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
 
                 {/* Learning preferences */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <label style={{ color: "#a0aec0", fontSize: 12 }}>Level</label>
-                    <select
-                        value={settings.userLevel}
-                        onChange={(e) => updateSettings({ userLevel: e.target.value as any })}
-                        style={{
-                            background: "#1f2937",
-                            color: "#e5e7eb",
-                            border: "1px solid #374151",
-                            borderRadius: 4,
-                            padding: "4px 8px",
-                            fontSize: 12,
-                        }}
+                    <label style={{ color: "var(--text-secondary)", fontSize: 12 }}>Level</label>
+                    <ThemedSelect
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        value={settings.userLevel as any}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        onChange={(v) => updateSettings({ userLevel: v as any })}
+                        options={[
+                            { label: "A1 (Beginner)", value: "A1" },
+                            { label: "A2 (Elementary)", value: "A2" },
+                            { label: "B1 (Intermediate)", value: "B1" },
+                            { label: "B2 (Upper Intermediate)", value: "B2" },
+                            { label: "C1 (Advanced)", value: "C1" },
+                            { label: "C2 (Proficient)", value: "C2" },
+                        ]}
+                        buttonWidthPx={160}
                         title="Your comprehension level"
-                    >
-                        <option value="A1">A1 (Beginner)</option>
-                        <option value="A2">A2 (Elementary)</option>
-                        <option value="B1">B1 (Intermediate)</option>
-                        <option value="B2">B2 (Upper Intermediate)</option>
-                        <option value="C1">C1 (Advanced)</option>
-                        <option value="C2">C2 (Proficient)</option>
-                    </select>
+                    />
                 </div>
 
                 {/* Theme switch */}
@@ -622,6 +599,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
 interface DifficultiesDialogProps {
     onClose: () => void;
     difficulties: string[];
+    // eslint-disable-next-line no-unused-vars
     onUpdate: (difficulties: string[]) => void;
 }
 
@@ -653,7 +631,7 @@ const DifficultiesDialog: React.FC<DifficultiesDialogProps> = ({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                backgroundColor: "var(--overlay-bg)",
                 zIndex: 3000,
                 display: "flex",
                 alignItems: "center",
@@ -670,7 +648,7 @@ const DifficultiesDialog: React.FC<DifficultiesDialogProps> = ({
                     maxWidth: "600px",
                     maxHeight: "80vh",
                     overflow: "auto",
-                    boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                    boxShadow: `0 10px 25px var(--dropdown-shadow)`,
                 }}
                 onClick={(e) => e.stopPropagation()}
             >

@@ -434,7 +434,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
                 originalBackgrounds.push(computed);
 
                 // Apply highlight
-                anchor.style.backgroundColor = "rgba(180,180,180,0.35)";
+                anchor.style.backgroundColor = "var(--bg-hover)";
             });
 
             // Scroll to the first segment
@@ -527,36 +527,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
             // non-blocking
         }
 
-        // Enqueue story generation for this content
-        try {
-            const { queueStoryGeneration } = await import("../../lib/phrases/storyQueue");
-            const { loadPhrasesByContentHash } = await import("../../lib/db/phraseStore");
-
-            // Get all phrases for this content
-            const contentHash = generateContentHash(text);
-            const allPhrases = await loadPhrasesByContentHash(contentHash);
-
-            if (allPhrases.length >= 3) {
-                // Only generate stories for content with 3+ phrases
-                await queueStoryGeneration({
-                    contentHash,
-                    phraseIds: allPhrases.map((p) => p.id),
-                    l1: settings.l1,
-                    l2: settings.l2,
-                    level: settings.userLevel || "A2",
-                    difficulties: settings.userDifficulties || [],
-                    maxRetries: 3,
-                });
-                console.log(
-                    "Story generation queued for content with",
-                    allPhrases.length,
-                    "phrases",
-                );
-            }
-        } catch (error) {
-            console.warn("Failed to queue story generation:", error);
-            // non-blocking
-        }
+        // Note: automatic story generation is intentionally disabled per product spec.
 
         // Debug logging
         // if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development") {
@@ -751,9 +722,9 @@ export const TextReader: React.FC<TextReaderProps> = ({
                     <div
                         style={{
                             padding: "16px",
-                            backgroundColor: "#ebf8ff",
+                            backgroundColor: "var(--info-bg)",
                             borderRadius: "8px",
-                            border: "1px solid #bee3f8",
+                            border: "1px solid var(--info-color)",
                             position: "relative",
                         }}
                     >
@@ -768,7 +739,7 @@ export const TextReader: React.FC<TextReaderProps> = ({
                                 right: "8px",
                                 backgroundColor: "transparent",
                                 border: "none",
-                                color: "#2b6cb0",
+                                color: "var(--info-color)",
                                 cursor: "pointer",
                                 fontSize: "12px",
                                 padding: "4px 8px",
@@ -781,13 +752,15 @@ export const TextReader: React.FC<TextReaderProps> = ({
                         <h3
                             style={{
                                 margin: "0 0 8px 0",
-                                color: "#2b6cb0",
+                                color: "var(--info-color)",
                                 paddingRight: "40px",
                             }}
                         >
                             {t.instructions}
                         </h3>
-                        <p style={{ margin: 0, color: "#2c5282" }}>{t.instructionsText}</p>
+                        <p style={{ margin: 0, color: "var(--info-color)" }}>
+                            {t.instructionsText}
+                        </p>
                         <button
                             onClick={() => {
                                 setShowInstructions(false);
@@ -796,8 +769,8 @@ export const TextReader: React.FC<TextReaderProps> = ({
                             style={{
                                 marginTop: "8px",
                                 backgroundColor: "transparent",
-                                border: "1px solid #2b6cb0",
-                                color: "#2b6cb0",
+                                border: "1px solid var(--info-color)",
+                                color: "var(--info-color)",
                                 cursor: "pointer",
                                 fontSize: "12px",
                                 padding: "4px 8px",
