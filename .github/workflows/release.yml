@@ -30,7 +30,7 @@ jobs:
             # ---------- Node + deps on each OS ----------
             - name: Setup Node.js (Linux)
               if: matrix.os == 'ubuntu-latest'
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: "20"
                   cache: "npm"
@@ -42,7 +42,7 @@ jobs:
 
             - name: Setup Node.js (Non-Linux)
               if: matrix.os != 'ubuntu-latest'
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: "20"
                   cache: "npm"
