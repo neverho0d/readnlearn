@@ -40,7 +40,7 @@ export const PhraseControl: React.FC<PhraseControlProps> = ({
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <FontAwesomeIcon icon={faFile} style={{ color: "var(--muted)", fontSize: 12 }} />
                 <span style={{ color: "var(--link-blue)" }}>{sourceFile || "Unknown source"}</span>
-                <span style={{ margin: "0 6px", color: "var(--border)" }}>|</span>
+                <span style={{ margin: "0 6px", color: "var(--border-color)" }}>|</span>
                 <div style={{ position: "relative" }}>
                     <button
                         onClick={() => setMenuOpen((prev) => !prev)}
@@ -67,7 +67,7 @@ export const PhraseControl: React.FC<PhraseControlProps> = ({
                                 right: 0,
                                 top: 22,
                                 background: "var(--bg)",
-                                border: "1px solid var(--border)",
+                                border: "1px solid var(--border-color)",
                                 borderRadius: 6,
                                 boxShadow: "none",
                                 zIndex: 10,

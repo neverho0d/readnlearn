@@ -46,6 +46,8 @@ export const TaskDetailsPopup: React.FC<TaskDetailsPopupProps> = ({
                 return "Translating";
             case "story_generation":
                 return "Generating story for";
+            case "card_generation":
+                return "Generating cards for";
             default:
                 return "Processing";
         }

@@ -278,7 +278,11 @@ BEGIN
     r.grade as last_grade,
     r.ease_factor,
     r.interval_days,
-    r.repetitions
+    COALESCE((
+      SELECT COUNT(*)::INTEGER 
+      FROM reviews r2 
+      WHERE r2.phrase_id = p.id AND r2.user_id = p_user_id
+    ), 0) as repetitions
   FROM phrases p
   LEFT JOIN reviews r ON p.id = r.phrase_id
   WHERE p.user_id = p_user_id

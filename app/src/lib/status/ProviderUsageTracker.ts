@@ -56,7 +56,7 @@ class ProviderUsageTracker {
         // Update every 30 seconds
         this.updateInterval = setInterval(() => {
             this.updateUsage();
-        }, 30000);
+        }, 60000);
 
         // Listen for settings changes
         window.addEventListener("readnlearn:settings-updated", () => {
@@ -97,10 +97,10 @@ class ProviderUsageTracker {
                 limit: this.googleDriver.dailyCap,
             });
 
-            console.log("ProviderUsageTracker: Updated usage", {
-                openai: { used: openaiUsage.costUsd, limit: this.openaiDriver.dailyCap },
-                google: { used: googleUsage.costUsd, limit: this.googleDriver.dailyCap },
-            });
+            // console.log("ProviderUsageTracker: Updated usage", {
+            //     openai: { used: openaiUsage.costUsd, limit: this.openaiDriver.dailyCap },
+            //     google: { used: googleUsage.costUsd, limit: this.googleDriver.dailyCap },
+            // });
         } catch (error) {
             console.error("ProviderUsageTracker: Failed to update usage", error);
         }

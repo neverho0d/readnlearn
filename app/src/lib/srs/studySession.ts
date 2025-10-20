@@ -7,10 +7,6 @@
 
 import { supabase } from "../supabase/client";
 import { calculateSM2, getInitialSM2Values, ReviewInput, ReviewResult } from "./sm2";
-import { OpenAIDriver } from "../../adapters/llm/OpenAIDriver";
-import { DeepLDriver } from "../../adapters/mt/DeepLDriver";
-import { GoogleDriver } from "../../adapters/mt/GoogleDriver";
-import { PollyDriver } from "../../adapters/tts/PollyDriver";
 
 export interface Phrase {
     id: string;
@@ -82,21 +78,12 @@ export interface StudySessionConfig {
 }
 
 export class StudySessionManager {
-    private llmDriver?: OpenAIDriver;
-    private mtDriver?: DeepLDriver | GoogleDriver;
-    private ttsDriver?: PollyDriver;
     private currentSession?: StudySession;
     private currentItems: StudyItem[] = [];
     private sessionStartTime: Date = new Date();
 
-    constructor(
-        llmDriver?: OpenAIDriver,
-        mtDriver?: DeepLDriver | GoogleDriver,
-        ttsDriver?: PollyDriver,
-    ) {
-        this.llmDriver = llmDriver;
-        this.mtDriver = mtDriver;
-        this.ttsDriver = ttsDriver;
+    constructor() {
+        // No AI drivers needed - all data should be pre-generated
     }
 
     /**
@@ -156,14 +143,6 @@ export class StudySessionManager {
     }
 
     /**
-     * Get the next item in the current session
-     */
-    getNextItem(): StudyItem | null {
-        const nextItem = this.currentItems.find((item) => item.grade === undefined);
-        return nextItem || null;
-    }
-
-    /**
      * Get all items in the current session
      */
     getCurrentItems(): StudyItem[] {
@@ -191,94 +170,6 @@ export class StudySessionManager {
             averageGrade,
             durationSeconds: Math.floor((Date.now() - this.sessionStartTime.getTime()) / 1000),
         };
-    }
-
-    /**
-     * Submit a grade for the current item
-     */
-    async submitGrade(itemId: string, grade: number, responseTimeSeconds?: number): Promise<void> {
-        try {
-            const item = this.currentItems.find((i) => i.id === itemId);
-            if (!item) {
-                throw new Error("Item not found");
-            }
-
-            if (grade < 1 || grade > 4) {
-                throw new Error("Grade must be between 1 and 4");
-            }
-
-            // Update item
-            item.grade = grade;
-            item.responseTimeSeconds = responseTimeSeconds;
-            item.isCorrect = grade >= 3;
-
-            // Update SRS data
-            await this.updateSRSData(item.phrase.id, grade);
-
-            // Update session item record
-            await supabase.from("study_session_items").insert({
-                session_id: this.currentSession!.id,
-                phrase_id: item.phrase.id,
-                item_order: item.order,
-                grade,
-                response_time_seconds: responseTimeSeconds,
-                is_correct: item.isCorrect,
-            });
-
-            // Update session statistics
-            this.updateSessionStats();
-        } catch (error) {
-            console.error("Failed to submit grade:", error);
-            throw error;
-        }
-    }
-
-    /**
-     * Generate a story for the current session
-     */
-    async generateStory(): Promise<StoryResult | null> {
-        if (!this.llmDriver || this.currentItems.length === 0) {
-            return null;
-        }
-
-        try {
-            const phrases = this.currentItems.map((item) => item.phrase);
-            const context = {
-                l1: "en", // TODO: Get from user settings
-                l2: "es", // TODO: Get from user settings
-                proficiency: "intermediate" as const,
-            };
-
-            const response = await this.llmDriver.generateStory(phrases, context);
-            return response.data;
-        } catch (error) {
-            console.error("Failed to generate story:", error);
-            return null;
-        }
-    }
-
-    /**
-     * Generate cloze exercises for the current session
-     */
-    async generateCloze(): Promise<ClozeResult[]> {
-        if (!this.llmDriver || this.currentItems.length === 0) {
-            return [];
-        }
-
-        try {
-            const phrases = this.currentItems.map((item) => item.phrase);
-            const context = {
-                l1: "en", // TODO: Get from user settings
-                l2: "es", // TODO: Get from user settings
-                proficiency: "intermediate" as const,
-            };
-
-            const response = await this.llmDriver.generateCloze(phrases, context, 5);
-            return response.data;
-        } catch (error) {
-            console.error("Failed to generate cloze exercises:", error);
-            return [];
-        }
     }
 
     /**
@@ -329,8 +220,15 @@ export class StudySessionManager {
      */
     private async getDuePhrases(limit: number): Promise<Phrase[]> {
         try {
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) {
+                throw new Error("No authenticated user");
+            }
+
             const { data: phrases, error } = await supabase.rpc("get_due_phrases", {
-                p_user_id: (await supabase.auth.getUser()).data.user?.id,
+                p_user_id: user.id,
                 p_limit: limit,
             });
 
@@ -375,9 +273,9 @@ export class StudySessionManager {
                 // Subsequent review - use previous values
                 reviewInput = {
                     grade,
-                    previousEaseFactor: currentReview.ease_factor,
-                    previousInterval: currentReview.interval_days,
-                    previousRepetitions: currentReview.repetitions,
+                    previousEaseFactor: currentReview.ease_factor || 2.5,
+                    previousInterval: currentReview.interval_days || 1,
+                    previousRepetitions: currentReview.repetitions || 0, // Fallback to 0 if column doesn't exist
                 };
                 reviewResult = calculateSM2(reviewInput);
             }
@@ -400,6 +298,34 @@ export class StudySessionManager {
             console.error("Failed to update SRS data:", error);
             throw error;
         }
+    }
+
+    /**
+     * Get the next study item
+     */
+    getNextItem(): StudyItem | null {
+        return this.currentItems.find((item) => item.grade === undefined) || null;
+    }
+
+    /**
+     * Submit a grade for a study item
+     */
+    async submitGrade(itemId: string, grade: number, responseTime: number): Promise<void> {
+        const item = this.currentItems.find((item) => item.id === itemId);
+        if (!item) {
+            throw new Error(`Study item not found: ${itemId}`);
+        }
+
+        // Update the item
+        item.grade = grade;
+        item.responseTimeSeconds = responseTime;
+        item.isCorrect = grade >= 3;
+
+        // Update SRS data
+        await this.updateSRSData(item.phrase.id, grade);
+
+        // Update session statistics
+        this.updateSessionStats();
     }
 
     /**
@@ -437,36 +363,133 @@ export class StudySessionManager {
         masteredPhrases: number;
     }> {
         try {
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) {
+                console.warn("No authenticated user, returning default stats");
+                return this.getDefaultStats();
+            }
+
+            // Try to get stats from RPC function first
             const { data: stats, error } = await supabase.rpc("get_user_srs_stats", {
-                p_user_id: (await supabase.auth.getUser()).data.user?.id,
+                p_user_id: user.id,
             });
 
             if (error) {
-                throw new Error(`Failed to get user stats: ${error.message}`);
+                console.warn("RPC function failed, falling back to manual calculation:", error);
+                return await this.calculateStatsManually(user.id);
             }
 
-            return (
-                stats[0] || {
-                    totalReviews: 0,
-                    averageGrade: 0,
-                    retentionRate: 0,
-                    dueCount: 0,
-                    overdueCount: 0,
-                    totalPhrases: 0,
-                    masteredPhrases: 0,
-                }
-            );
+            if (!stats || stats.length === 0) {
+                console.warn("No stats returned from RPC, falling back to manual calculation");
+                return await this.calculateStatsManually(user.id);
+            }
+
+            const result = stats[0];
+            console.log("User stats from RPC:", result);
+
+            // Ensure all values are valid numbers
+            return {
+                totalReviews: Number(result.totalReviews) || 0,
+                averageGrade: Number(result.averageGrade) || 0,
+                retentionRate: Number(result.retentionRate) || 0,
+                dueCount: Number(result.dueCount) || 0,
+                overdueCount: Number(result.overdueCount) || 0,
+                totalPhrases: Number(result.totalPhrases) || 0,
+                masteredPhrases: Number(result.masteredPhrases) || 0,
+            };
         } catch (error) {
             console.error("Failed to get user stats:", error);
-            return {
-                totalReviews: 0,
-                averageGrade: 0,
-                retentionRate: 0,
-                dueCount: 0,
-                overdueCount: 0,
-                totalPhrases: 0,
-                masteredPhrases: 0,
+            return this.getDefaultStats();
+        }
+    }
+
+    private getDefaultStats() {
+        return {
+            totalReviews: 0,
+            averageGrade: 0,
+            retentionRate: 0,
+            dueCount: 0,
+            overdueCount: 0,
+            totalPhrases: 0,
+            masteredPhrases: 0,
+        };
+    }
+
+    private async calculateStatsManually(userId: string) {
+        try {
+            console.log("Calculating stats manually for user:", userId);
+
+            // Get total phrases
+            const { data: phrases, error: phrasesError } = await supabase
+                .from("phrases")
+                .select("id")
+                .eq("user_id", userId);
+
+            if (phrasesError) {
+                console.error("Failed to get phrases:", phrasesError);
+                return this.getDefaultStats();
+            }
+
+            const totalPhrases = phrases?.length || 0;
+
+            // Get reviews for SRS calculations
+            const { data: reviews, error: reviewsError } = await supabase
+                .from("reviews")
+                .select("grade, created_at")
+                .eq("user_id", userId);
+
+            if (reviewsError) {
+                console.error("Failed to get reviews:", reviewsError);
+                return this.getDefaultStats();
+            }
+
+            const totalReviews = reviews?.length || 0;
+            const averageGrade =
+                totalReviews > 0
+                    ? reviews.reduce((sum, r) => sum + (r.grade || 0), 0) / totalReviews
+                    : 0;
+
+            // Calculate retention rate (simplified: percentage of reviews with grade >= 3)
+            const retentionRate =
+                totalReviews > 0
+                    ? (reviews.filter((r) => (r.grade || 0) >= 3).length / totalReviews) * 100
+                    : 0;
+
+            // Get due phrases (simplified: phrases with no recent reviews)
+            const { data: duePhrases, error: dueError } = await supabase
+                .from("phrases")
+                .select("id")
+                .eq("user_id", userId)
+                .is("last_reviewed_at", null);
+
+            const dueCount = dueError ? 0 : duePhrases?.length || 0;
+
+            // Get mastered phrases (simplified: phrases with average grade >= 3)
+            const { data: masteredPhrases, error: masteredError } = await supabase
+                .from("phrases")
+                .select("id")
+                .eq("user_id", userId)
+                .gte("average_grade", 3);
+
+            const masteredCount = masteredError ? 0 : masteredPhrases?.length || 0;
+
+            const result = {
+                totalReviews,
+                averageGrade: Math.round(averageGrade * 10) / 10, // Round to 1 decimal
+                retentionRate: Math.round(retentionRate * 10) / 10, // Round to 1 decimal
+                dueCount,
+                overdueCount: 0, // Simplified: no overdue calculation
+                totalPhrases,
+                masteredPhrases: masteredCount,
             };
+
+            console.log("Manually calculated stats:", result);
+            return result;
+        } catch (error) {
+            console.error("Failed to calculate stats manually:", error);
+            return this.getDefaultStats();
         }
     }
 

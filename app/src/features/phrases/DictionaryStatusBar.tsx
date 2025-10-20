@@ -54,7 +54,7 @@ export const DictionaryStatusBar: React.FC<DictionaryStatusBarProps> = ({
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "8px 16px",
-                borderBottom: "1px solid var(--border)",
+                borderBottom: "1px solid var(--border-color)",
                 background: "var(--bg-secondary)",
                 fontSize: "13px",
             }}

@@ -7,7 +7,7 @@
 
 export interface BackgroundTask {
     id: string;
-    type: "translation" | "story_generation";
+    type: "translation" | "story_generation" | "card_generation";
     status: "pending" | "processing" | "completed" | "failed";
     phrase: string; // First 50 characters for display
     phraseId: string;

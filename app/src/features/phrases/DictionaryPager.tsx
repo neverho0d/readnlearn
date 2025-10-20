@@ -73,7 +73,7 @@ export const DictionaryPager: React.FC<DictionaryPagerProps> = ({
                 background: isCurrent ? "var(--primary)" : "var(--bg)",
                 color: isCurrent ? "white" : "var(--text)",
                 border: "1px solid",
-                borderColor: isCurrent ? "var(--primary)" : "var(--border)",
+                borderColor: isCurrent ? "var(--primary)" : "var(--border-color)",
                 borderRadius: 4,
                 cursor: isCurrent ? "default" : "pointer",
                 fontSize: "13px",
@@ -91,7 +91,7 @@ export const DictionaryPager: React.FC<DictionaryPagerProps> = ({
             onMouseLeave={(e) => {
                 if (!isCurrent) {
                     e.currentTarget.style.background = "var(--bg)";
-                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.borderColor = "var(--border-color)";
                 }
             }}
         >
@@ -107,7 +107,7 @@ export const DictionaryPager: React.FC<DictionaryPagerProps> = ({
                 justifyContent: "center",
                 gap: 4,
                 padding: "12px 16px",
-                borderTop: "1px solid var(--border)",
+                borderTop: "1px solid var(--border-color)",
                 background: "var(--bg-secondary)",
             }}
         >
@@ -137,7 +137,7 @@ export const DictionaryPager: React.FC<DictionaryPagerProps> = ({
                         padding: "6px 12px",
                         background: "var(--bg)",
                         color: "var(--text)",
-                        border: "1px solid var(--border)",
+                        border: "1px solid var(--border-color)",
                         borderRadius: 4,
                         cursor: "pointer",
                         fontSize: "13px",
@@ -149,7 +149,7 @@ export const DictionaryPager: React.FC<DictionaryPagerProps> = ({
                     }}
                     onMouseLeave={(e) => {
                         e.currentTarget.style.background = "var(--bg)";
-                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.borderColor = "var(--border-color)";
                     }}
                 >
                     ← Prev
@@ -169,7 +169,7 @@ export const DictionaryPager: React.FC<DictionaryPagerProps> = ({
                         padding: "6px 12px",
                         background: "var(--bg)",
                         color: "var(--text)",
-                        border: "1px solid var(--border)",
+                        border: "1px solid var(--border-color)",
                         borderRadius: 4,
                         cursor: "pointer",
                         fontSize: "13px",
@@ -181,7 +181,7 @@ export const DictionaryPager: React.FC<DictionaryPagerProps> = ({
                     }}
                     onMouseLeave={(e) => {
                         e.currentTarget.style.background = "var(--bg)";
-                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.borderColor = "var(--border-color)";
                     }}
                 >
                     Next →

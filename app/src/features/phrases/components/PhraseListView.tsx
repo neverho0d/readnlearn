@@ -356,7 +356,7 @@ export const PhraseListView: React.FC<PhraseListViewProps> = ({
                         position: "sticky",
                         bottom: 0,
                         background: "var(--bg)",
-                        borderTop: "1px solid var(--border)",
+                        borderTop: "1px solid var(--border-color)",
                         padding: "8px 12px",
                         display: "flex",
                         alignItems: "center",

@@ -35,7 +35,7 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
     return (
         <div
             style={{
-                border: "1px solid var(--border)",
+                border: "1px solid var(--border-color)",
                 borderRadius: "8px",
                 padding: "16px",
                 backgroundColor: "var(--panel)",
@@ -84,7 +84,7 @@ export const PhraseSelector: React.FC<PhraseSelectorProps> = ({
                             style={{
                                 width: "100%",
                                 padding: "8px 12px",
-                                border: "1px solid var(--border)",
+                                border: "1px solid var(--border-color)",
                                 borderRadius: "4px",
                                 fontSize: "14px",
                                 boxSizing: "border-box",

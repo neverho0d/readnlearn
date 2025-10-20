@@ -36,7 +36,7 @@ export const DictionaryTagsBar: React.FC<DictionaryTagsBarProps> = ({
             <div
                 style={{
                     padding: "12px 16px",
-                    borderBottom: "1px solid var(--border)",
+                    borderBottom: "1px solid var(--border-color)",
                     background: "var(--bg)",
                     color: "var(--muted)",
                     fontSize: "14px",

@@ -91,7 +91,7 @@ export const DictionarySearchBar: React.FC<DictionarySearchBarProps> = ({
                     style={{
                         width: "100%",
                         padding: "8px 36px 8px 32px", // room for icons on both sides
-                        border: "1px solid var(--border)",
+                        border: "1px solid var(--border-color)",
                         borderRadius: 6,
                         background: "var(--bg)",
                         color: "var(--text)",
@@ -104,7 +104,7 @@ export const DictionarySearchBar: React.FC<DictionarySearchBarProps> = ({
                         e.target.style.borderColor = "var(--primary)";
                     }}
                     onBlur={(e) => {
-                        e.target.style.borderColor = "var(--border)";
+                        e.target.style.borderColor = "var(--border-color)";
                     }}
                 />
                 {/* Clear icon (left), shown only when hovering and there is text */}

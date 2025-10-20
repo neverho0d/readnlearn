@@ -147,7 +147,7 @@ export function StoryView({
                     alignItems: "center",
                     marginBottom: "1rem",
                     paddingBottom: "0.5rem",
-                    borderBottom: "1px solid var(--border)",
+                    borderBottom: "1px solid var(--border-color)",
                 }}
             >
                 <h2 style={{ margin: 0, color: "var(--text-primary)" }}>Generated Story</h2>
@@ -181,7 +181,7 @@ export function StoryView({
                                 ? "var(--primary)"
                                 : "transparent",
                             color: state.showAllGlosses ? "white" : "var(--text-secondary)",
-                            border: "1px solid var(--border)",
+                            border: "1px solid var(--border-color)",
                             borderRadius: "4px",
                             cursor: "pointer",
                         }}
@@ -245,7 +245,7 @@ export function StoryView({
                                         : "var(--bg-tertiary)",
                                 borderRadius: "4px",
                                 cursor: "pointer",
-                                border: "1px solid var(--border)",
+                                border: "1px solid var(--border-color)",
                                 transition: "all 0.2s ease",
                             }}
                         >

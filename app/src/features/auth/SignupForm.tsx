@@ -158,7 +158,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
                         style={{
                             width: "100%",
                             padding: "0.75rem",
-                            border: "1px solid var(--border)",
+                            border: "1px solid var(--border-color)",
                             borderRadius: "4px",
                             backgroundColor: "var(--bg-primary)",
                             color: "var(--text-primary)",
@@ -185,7 +185,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
                         style={{
                             width: "100%",
                             padding: "0.75rem",
-                            border: "1px solid var(--border)",
+                            border: "1px solid var(--border-color)",
                             borderRadius: "4px",
                             backgroundColor: "var(--bg-primary)",
                             color: "var(--text-primary)",
@@ -212,7 +212,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
                         style={{
                             width: "100%",
                             padding: "0.75rem",
-                            border: "1px solid var(--border)",
+                            border: "1px solid var(--border-color)",
                             borderRadius: "4px",
                             backgroundColor: "var(--bg-primary)",
                             color: "var(--text-primary)",

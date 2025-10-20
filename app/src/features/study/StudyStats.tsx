@@ -133,7 +133,7 @@ export function StudyStats({ session, showDetailed = true, compact = false }: St
                     style={{
                         width: "100%",
                         height: "8px",
-                        backgroundColor: "var(--border)",
+                        backgroundColor: "var(--border-color)",
                         borderRadius: "4px",
                         overflow: "hidden",
                     }}

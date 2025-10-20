@@ -199,10 +199,16 @@ export class GoogleAIDriver implements LlmBaseAdapter {
 
         const json = JSON.parse(raw);
 
+        // Check for errors first
+        if (json.error) {
+            throw new Error(`Google AI API error: ${json.error.message || "Unknown error"}`);
+        }
+
         // Parse Google AI response format
         if (json?.candidates?.[0]?.content?.parts?.[0]?.text) {
             return json.candidates[0].content.parts[0].text;
         } else {
+            console.error("Google AI response structure:", json);
             throw new Error("No valid content found in Google AI response");
         }
     }

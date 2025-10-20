@@ -541,14 +541,21 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     onClick={toggleTheme}
                     style={{
                         backgroundColor: "transparent",
-                        color: "var(--topbar-text)",
-                        border: "1px solid rgba(255,255,255,0.18)",
+                        color: "var(--text-primary)",
+                        border: "1px solid var(--border-color)",
                         borderRadius: "4px",
                         padding: "6px 10px",
                         cursor: "pointer",
                         fontSize: "12px",
+                        transition: "background-color 0.2s ease",
                     }}
                     title={theme === "dark" ? "Switch to light" : "Switch to dark"}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                    }}
                 >
                     {theme === "dark" ? t.light : t.dark}
                 </button>
@@ -559,14 +566,21 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                     onClick={() => setShowDifficultiesDialog(true)}
                     style={{
                         backgroundColor: "transparent",
-                        color: "var(--topbar-text)",
-                        border: "1px solid rgba(255,255,255,0.18)",
+                        color: "var(--text-primary)",
+                        border: "1px solid var(--border-color)",
                         borderRadius: "4px",
                         padding: "6px 10px",
                         cursor: "pointer",
                         fontSize: "12px",
+                        transition: "background-color 0.2s ease",
                     }}
                     title="Learning difficulties"
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                    }}
                 >
                     Difficulties
                 </button>
@@ -650,7 +664,7 @@ const DifficultiesDialog: React.FC<DifficultiesDialogProps> = ({
             <div
                 style={{
                     backgroundColor: "var(--panel)",
-                    border: "1px solid var(--border)",
+                    border: "1px solid var(--border-color)",
                     borderRadius: "8px",
                     padding: "24px",
                     maxWidth: "600px",
@@ -719,7 +733,7 @@ const DifficultiesDialog: React.FC<DifficultiesDialogProps> = ({
                             padding: "8px 16px",
                             backgroundColor: "transparent",
                             color: "var(--text)",
-                            border: "1px solid var(--border)",
+                            border: "1px solid var(--border-color)",
                             borderRadius: "4px",
                             cursor: "pointer",
                         }}
