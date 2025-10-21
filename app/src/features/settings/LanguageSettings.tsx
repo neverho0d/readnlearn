@@ -159,7 +159,7 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                             color:
                                 mode === "reading"
                                     ? "var(--tab-active-text)"
-                                    : "var(--tab-inactive-text)",
+                                    : "var(--topbar-text)",
                             border: "1px solid var(--tab-active-bg)",
                             borderRadius: 4,
                             padding: "6px 8px",

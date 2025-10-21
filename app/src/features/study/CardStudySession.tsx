@@ -8,6 +8,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getDueCards, updateCardReview } from "../../lib/cards/cardStore";
 import { DueCard } from "../../lib/cards/cardStore";
+import { supabase } from "../../lib/supabase/client";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
 export interface CardStudyConfig {
     maxCards?: number;
@@ -18,9 +21,10 @@ interface ClozeInputProps {
     value: string;
     // eslint-disable-next-line no-unused-vars
     onChange: (value: string) => void;
+    onEnter?: () => void;
 }
 
-const ClozeInput: React.FC<ClozeInputProps> = ({ value: inputValue, onChange }) => {
+const ClozeInput: React.FC<ClozeInputProps> = ({ value: inputValue, onChange, onEnter }) => {
     const spanRef = useRef<HTMLSpanElement>(null);
 
     useEffect(() => {
@@ -28,6 +32,17 @@ const ClozeInput: React.FC<ClozeInputProps> = ({ value: inputValue, onChange }) 
             spanRef.current.textContent = inputValue;
         }
     }, [inputValue]);
+
+    // Auto-focus the contenteditable element when component mounts
+    useEffect(() => {
+        if (spanRef.current) {
+            // Small delay to ensure the element is fully rendered
+            const timer = setTimeout(() => {
+                spanRef.current?.focus();
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, []);
 
     const handleInput = (e: React.FormEvent<HTMLSpanElement>) => {
         const text = e.currentTarget.textContent || "";
@@ -43,6 +58,7 @@ const ClozeInput: React.FC<ClozeInputProps> = ({ value: inputValue, onChange }) 
             onKeyDown={(e) => {
                 if (e.key === "Enter") {
                     e.preventDefault();
+                    onEnter?.();
                 }
             }}
             style={{
@@ -79,6 +95,10 @@ export interface CardStudyState {
         completed: number;
         correct: number;
     };
+    phraseData: {
+        [phraseId: string]: { text: string; translation?: string; explanation?: string };
+    };
+    showExplanation: boolean;
 }
 
 export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) {
@@ -94,6 +114,8 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
             completed: 0,
             correct: 0,
         },
+        phraseData: {},
+        showExplanation: false,
     });
 
     const [loading, setLoading] = useState(true);
@@ -109,12 +131,45 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
             setLoading(true);
             const cards = await getDueCards(config.maxCards || 20);
 
+            // Fetch phrase data for all cards
+            const phraseIds = [...new Set(cards.map((card) => card.phrase_id))];
+            const phraseData: {
+                [phraseId: string]: { text: string; translation?: string; explanation?: string };
+            } = {};
+
+            if (phraseIds.length > 0) {
+                const { data: phrases, error: phrasesError } = await supabase
+                    .from("phrases")
+                    .select("id, text, translation, explanation")
+                    .in("id", phraseIds);
+
+                if (!phrasesError && phrases) {
+                    phrases.forEach((phrase) => {
+                        phraseData[phrase.id] = {
+                            text: phrase.text,
+                            translation: phrase.translation,
+                            explanation: phrase.explanation,
+                        };
+                    });
+                } else if (phrasesError) {
+                    console.error("Error fetching phrases:", phrasesError);
+                }
+            }
+
             setState((prev) => ({
                 ...prev,
                 cards,
+                phraseData,
+                currentCardIndex: 0, // Reset to first card
+                isFlipped: false, // Reset flip state
+                userAnswer: "", // Clear user input
+                showAnswer: false, // Hide answer
+                showExplanation: false, // Hide explanation
+                completedCards: [], // Reset completed cards
                 sessionStats: {
-                    ...prev.sessionStats,
                     total: cards.length,
+                    completed: 0, // Reset completed count
+                    correct: 0, // Reset correct count
                 },
             }));
 
@@ -137,6 +192,13 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
         setState((prev) => ({
             ...prev,
             userAnswer: answer,
+        }));
+    };
+
+    const toggleExplanation = () => {
+        setState((prev) => ({
+            ...prev,
+            showExplanation: !prev.showExplanation,
         }));
     };
 
@@ -172,8 +234,11 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
         setState((prev) => {
             const nextIndex = prev.currentCardIndex + 1;
             if (nextIndex >= prev.cards.length) {
-                // Session completed
-                return prev;
+                // Session completed - advance to completion screen
+                return {
+                    ...prev,
+                    currentCardIndex: nextIndex, // This will trigger the completion screen
+                };
             }
 
             return {
@@ -182,12 +247,78 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
                 isFlipped: false,
                 userAnswer: "",
                 showAnswer: false,
+                showExplanation: false,
             };
         });
     };
 
     const skipCard = () => {
         nextCard();
+    };
+
+    const removeCard = async () => {
+        const currentCard = state.cards[state.currentCardIndex];
+        if (!currentCard) return;
+
+        // Show confirmation dialog
+        const confirmed = window.confirm(
+            "Are you sure you want to remove this card? This action cannot be undone.",
+        );
+
+        if (!confirmed) return;
+
+        try {
+            // Delete the card from the database
+            const { error } = await supabase.from("cards").delete().eq("id", currentCard.card_id);
+
+            if (error) {
+                console.error("Failed to delete card:", error);
+                setError("Failed to remove card");
+                return;
+            }
+
+            // Remove the card from the current session
+            const updatedCards = state.cards.filter((card) => card.card_id !== currentCard.card_id);
+
+            setState((prev) => ({
+                ...prev,
+                cards: updatedCards,
+                sessionStats: {
+                    ...prev.sessionStats,
+                    total: updatedCards.length,
+                },
+            }));
+
+            // If this was the last card, show completion screen
+            if (updatedCards.length === 0) {
+                setState((prev) => ({
+                    ...prev,
+                    currentCardIndex: prev.cards.length, // This will trigger completion screen
+                }));
+                return;
+            }
+
+            // If we removed a card before the current position, stay at the same index
+            // If we removed the current card or after, move to the next card
+            const newIndex =
+                state.currentCardIndex >= updatedCards.length
+                    ? updatedCards.length - 1
+                    : state.currentCardIndex;
+
+            setState((prev) => ({
+                ...prev,
+                currentCardIndex: newIndex,
+                isFlipped: false,
+                userAnswer: "",
+                showAnswer: false,
+                showExplanation: false,
+            }));
+
+            console.log("Card removed successfully");
+        } catch (err) {
+            console.error("Failed to remove card:", err);
+            setError("Failed to remove card");
+        }
     };
 
     if (loading) {
@@ -296,6 +427,7 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
                                 key={index}
                                 value={state.userAnswer || ""}
                                 onChange={handleAnswerChange}
+                                onEnter={handleFlip}
                             />
                         );
                     }
@@ -358,6 +490,9 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
             </>
         );
     };
+
+    // Get the original phrase data for the current card
+    const currentPhrase = state.phraseData[currentCard.phrase_id];
 
     return (
         <div style={{ padding: "2rem" }}>
@@ -449,8 +584,120 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
                                 fontWeight: "bold",
                             }}
                         >
-                            {isClozeCard ? renderClozeResult() : currentCard.back_text}
+                            {isClozeCard ? renderClozeResult() : currentCard.front_text}
                         </div>
+
+                        {/* Show translation if available */}
+                        {currentPhrase && currentPhrase.translation && (
+                            <div
+                                style={{
+                                    marginTop: "1.5rem",
+                                    padding: "1rem",
+                                    backgroundColor: "var(--bg-secondary)",
+                                    borderRadius: "6px",
+                                    border: "1px solid var(--border-color)",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        fontSize: "0.9rem",
+                                        color: "var(--text-secondary)",
+                                        marginBottom: "0.5rem",
+                                    }}
+                                >
+                                    <strong>Translation:</strong> {currentPhrase.translation}
+                                </div>
+
+                                {/* Show explanation toggle if explanation exists */}
+                                {currentPhrase.explanation && (
+                                    <div style={{ marginTop: "1rem" }}>
+                                        <button
+                                            onClick={toggleExplanation}
+                                            style={{
+                                                padding: "0.5rem 1rem",
+                                                backgroundColor: "transparent",
+                                                color: "var(--text-primary)",
+                                                border: "1px solid var(--border-color)",
+                                                borderRadius: "4px",
+                                                cursor: "pointer",
+                                                fontSize: "0.9rem",
+                                                transition: "background-color 0.2s ease",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor =
+                                                    "var(--bg-hover)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor =
+                                                    "transparent";
+                                            }}
+                                        >
+                                            {state.showExplanation ? "Hide" : "Show"} Explanation
+                                        </button>
+
+                                        {state.showExplanation && (
+                                            <div
+                                                style={{
+                                                    marginTop: "1rem",
+                                                    padding: "1rem",
+                                                    backgroundColor: "var(--bg-primary)",
+                                                    borderRadius: "4px",
+                                                    border: "1px solid var(--border-color)",
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        fontSize: "0.9rem",
+                                                        color: "var(--text-secondary)",
+                                                        marginBottom: "0.5rem",
+                                                        fontWeight: "bold",
+                                                    }}
+                                                >
+                                                    💡 Explanation:
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        fontSize: "0.9rem",
+                                                        lineHeight: "1.5",
+                                                        color: "var(--text-primary)",
+                                                        textAlign: "initial",
+                                                    }}
+                                                >
+                                                    <ReactMarkdown
+                                                        rehypePlugins={[rehypeRaw]}
+                                                        components={{
+                                                            p: ({ children }) => (
+                                                                <p
+                                                                    style={{
+                                                                        margin: "0 0 0.5rem 0",
+                                                                    }}
+                                                                >
+                                                                    {children}
+                                                                </p>
+                                                            ),
+                                                            strong: ({ children }) => (
+                                                                <strong
+                                                                    style={{ fontWeight: "bold" }}
+                                                                >
+                                                                    {children}
+                                                                </strong>
+                                                            ),
+                                                            em: ({ children }) => (
+                                                                <em style={{ fontStyle: "italic" }}>
+                                                                    {children}
+                                                                </em>
+                                                            ),
+                                                        }}
+                                                    >
+                                                        {currentPhrase.explanation}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div style={{ marginTop: "2rem" }}>
                             <div style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
@@ -543,6 +790,31 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
                     }}
                 >
                     Skip Card
+                </button>
+            </div>
+
+            {/* Remove button - smaller and below with gap */}
+            <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
+                <button
+                    onClick={removeCard}
+                    style={{
+                        padding: "0.3rem 0.8rem",
+                        backgroundColor: "transparent",
+                        color: "var(--error-color)",
+                        border: "1px solid var(--error-color)",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                        transition: "background-color 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "var(--error-bg)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                >
+                    Remove Card
                 </button>
             </div>
         </div>

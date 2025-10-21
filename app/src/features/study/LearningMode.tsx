@@ -9,7 +9,11 @@ import React, { useState, useEffect, useCallback } from "react";
 // import { useSettings } from "../../lib/settings/SettingsContext";
 import { CardStudySession } from "./CardStudySession";
 import { getCardStats } from "../../lib/cards/cardStore";
-import { generateCardsForAllPhrases, fixExistingClozeCards } from "../../lib/cards/cardGenerator";
+import {
+    generateCardsForAllPhrases,
+    fixExistingClozeCards,
+    cleanupOrphanedCards,
+} from "../../lib/cards/cardGenerator";
 import { statusStore } from "../../lib/status/StatusStore";
 
 export interface LearningModeProps {
@@ -31,6 +35,7 @@ export const LearningMode: React.FC<LearningModeProps> = () => {
     const [showStudySession, setShowStudySession] = useState(false);
     const [generatingCards, setGeneratingCards] = useState(false);
     const [fixingCards, setFixingCards] = useState(false);
+    const [cleaningCards, setCleaningCards] = useState(false);
 
     // Load user statistics
     const loadData = useCallback(async () => {
@@ -124,6 +129,41 @@ export const LearningMode: React.FC<LearningModeProps> = () => {
             );
         } finally {
             setFixingCards(false);
+        }
+    };
+
+    const handleCleanupCards = async () => {
+        setCleaningCards(true);
+
+        // Add status task for card cleanup
+        const taskId = statusStore.addTask({
+            type: "card_generation", // Use existing type since card_cleanup doesn't exist
+            status: "processing",
+            phrase: "Cleaning up orphaned cards",
+            phraseId: "all-cards",
+        });
+
+        try {
+            await cleanupOrphanedCards();
+
+            // Mark task as completed
+            statusStore.completeTask(taskId, "completed");
+
+            console.log("Card cleanup completed successfully!");
+
+            // Reload data to refresh stats
+            await loadData();
+        } catch (error) {
+            console.error("Failed to cleanup cards:", error);
+
+            // Mark task as failed
+            statusStore.completeTask(
+                taskId,
+                "failed",
+                error instanceof Error ? error.message : "Unknown error",
+            );
+        } finally {
+            setCleaningCards(false);
         }
     };
 
@@ -323,6 +363,28 @@ export const LearningMode: React.FC<LearningModeProps> = () => {
                             }}
                         >
                             {fixingCards ? "Fixing..." : "Fix Cloze Cards"}
+                        </button>
+
+                        <button
+                            onClick={handleCleanupCards}
+                            disabled={cleaningCards}
+                            style={{
+                                padding: "0.75rem 1.5rem",
+                                fontSize: "1rem",
+                                backgroundColor: cleaningCards
+                                    ? "var(--text-secondary)"
+                                    : "var(--error-color)",
+                                color: "white",
+                                border: "1px solid var(--error-color)",
+                                borderRadius: "6px",
+                                cursor: cleaningCards ? "not-allowed" : "pointer",
+                                fontWeight: "bold",
+                                opacity: cleaningCards ? 0.6 : 1,
+                                marginTop: "0.5rem",
+                                marginLeft: "0.5rem",
+                            }}
+                        >
+                            {cleaningCards ? "Cleaning..." : "Cleanup Orphaned Cards"}
                         </button>
                     </div>
                 ) : userStats && userStats.due_cards > 0 ? (

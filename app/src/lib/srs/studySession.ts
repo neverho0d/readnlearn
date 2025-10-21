@@ -227,16 +227,28 @@ export class StudySessionManager {
                 throw new Error("No authenticated user");
             }
 
-            const { data: phrases, error } = await supabase.rpc("get_due_phrases", {
-                p_user_id: user.id,
-                p_limit: limit,
-            });
+            // Get phrases directly from the phrases table to ensure we get translation field
+            const { data: phrases, error } = await supabase
+                .from("phrases")
+                .select("id, text, translation, source_file")
+                .eq("user_id", user.id)
+                .order("added_at", { ascending: true })
+                .limit(limit);
 
             if (error) {
                 throw new Error(`Failed to get due phrases: ${error.message}`);
             }
 
-            return phrases || [];
+            // Map the database result to Phrase interface
+            return (phrases || []).map((phrase: any) => ({
+                id: phrase.id,
+                text: phrase.text,
+                translation: phrase.translation,
+                context: undefined, // Not needed for display, only used for translation
+                difficulty: undefined, // Not available in phrases table
+                position: undefined, // Not available in phrases table
+                sourceFile: phrase.source_file,
+            }));
         } catch (error) {
             console.error("Failed to get due phrases:", error);
             return [];

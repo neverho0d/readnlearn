@@ -208,11 +208,146 @@ export async function saveCards(cards: Card[]): Promise<void> {
         user_id: user.id,
     }));
 
+    console.log(
+        `[Card Generation] Saving ${cardsWithUserId.length} cards to database:`,
+        cardsWithUserId.map((card) => ({
+            phrase_id: card.phrase_id,
+            card_type: card.card_type,
+            user_id: card.user_id,
+        })),
+    );
+
     const { error } = await supabase.from("cards").insert(cardsWithUserId);
 
     if (error) {
+        console.error(`[Card Generation] Failed to save cards:`, error);
         throw new Error(`Failed to save cards: ${error.message}`);
     }
+
+    console.log(`[Card Generation] Successfully saved ${cardsWithUserId.length} cards to database`);
+}
+
+/**
+ * Clean up orphaned or incorrectly linked cards
+ * This function should be run to fix any cards that were created with wrong phrase_id values
+ */
+export async function cleanupOrphanedCards(): Promise<void> {
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    console.log("[Card Cleanup] Starting cleanup of orphaned cards...");
+
+    // Get all cards for the user
+    const { data: allCards, error: cardsError } = await supabase
+        .from("cards")
+        .select("id, phrase_id, front_text, back_text, card_type")
+        .eq("user_id", user.id);
+
+    if (cardsError) {
+        console.error("[Card Cleanup] Failed to fetch cards:", cardsError);
+        return;
+    }
+
+    if (!allCards || allCards.length === 0) {
+        console.log("[Card Cleanup] No cards found");
+        return;
+    }
+
+    // Get all phrase IDs for the user
+    const { data: phrases, error: phrasesError } = await supabase
+        .from("phrases")
+        .select("id, text")
+        .eq("user_id", user.id);
+
+    if (phrasesError) {
+        console.error("[Card Cleanup] Failed to fetch phrases:", phrasesError);
+        return;
+    }
+
+    const validPhraseIds = new Set(phrases?.map((p) => p.id) || []);
+    const orphanedCards = allCards.filter((card) => !validPhraseIds.has(card.phrase_id));
+
+    console.log(
+        `[Card Cleanup] Found ${orphanedCards.length} orphaned cards out of ${allCards.length} total cards`,
+    );
+
+    if (orphanedCards.length > 0) {
+        console.log(
+            "[Card Cleanup] Orphaned cards:",
+            orphanedCards.map((card) => ({
+                id: card.id,
+                phrase_id: card.phrase_id,
+                front_text: card.front_text.substring(0, 50) + "...",
+                card_type: card.card_type,
+            })),
+        );
+
+        // Delete orphaned cards
+        const orphanedCardIds = orphanedCards.map((card) => card.id);
+        const { error: deleteError } = await supabase
+            .from("cards")
+            .delete()
+            .in("id", orphanedCardIds);
+
+        if (deleteError) {
+            console.error("[Card Cleanup] Failed to delete orphaned cards:", deleteError);
+        } else {
+            console.log(
+                `[Card Cleanup] Successfully deleted ${orphanedCards.length} orphaned cards`,
+            );
+        }
+    }
+
+    // Also check for cards that might have wrong phrase_id but exist
+    const cardsWithWrongPhrase = allCards.filter((card) => {
+        if (!validPhraseIds.has(card.phrase_id)) return false;
+
+        // Check if the card's front_text matches the phrase text
+        const phrase = phrases?.find((p) => p.id === card.phrase_id);
+        if (!phrase) return false;
+
+        // For simple cards, front_text should match phrase text
+        if (card.card_type === "simple") {
+            return card.front_text !== phrase.text;
+        }
+
+        // For cloze cards, front_text should contain the phrase text (with blanks)
+        return !card.front_text.includes(phrase.text.substring(0, 20)); // Check if first 20 chars match
+    });
+
+    if (cardsWithWrongPhrase.length > 0) {
+        console.log(
+            `[Card Cleanup] Found ${cardsWithWrongPhrase.length} cards with mismatched phrase content:`,
+            cardsWithWrongPhrase.map((card) => ({
+                id: card.id,
+                phrase_id: card.phrase_id,
+                front_text: card.front_text.substring(0, 50) + "...",
+                card_type: card.card_type,
+            })),
+        );
+
+        // Delete these cards too
+        const wrongPhraseCardIds = cardsWithWrongPhrase.map((card) => card.id);
+        const { error: deleteError2 } = await supabase
+            .from("cards")
+            .delete()
+            .in("id", wrongPhraseCardIds);
+
+        if (deleteError2) {
+            console.error(
+                "[Card Cleanup] Failed to delete cards with wrong phrase content:",
+                deleteError2,
+            );
+        } else {
+            console.log(
+                `[Card Cleanup] Successfully deleted ${cardsWithWrongPhrase.length} cards with wrong phrase content`,
+            );
+        }
+    }
+
+    console.log("[Card Cleanup] Cleanup completed");
 }
 
 /**
@@ -357,6 +492,8 @@ export async function generateCardsForNewPhrase(phraseId: string): Promise<void>
     } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
 
+    console.log(`[Card Generation] Starting card generation for phrase ID: ${phraseId}`);
+
     // Get the phrase
     const { data: phrase, error: phraseError } = await supabase
         .from("phrases")
@@ -366,15 +503,34 @@ export async function generateCardsForNewPhrase(phraseId: string): Promise<void>
         .single();
 
     if (phraseError || !phrase) {
+        console.error(`[Card Generation] Failed to load phrase ${phraseId}:`, phraseError);
         throw new Error(`Failed to load phrase: ${phraseError?.message}`);
     }
 
+    console.log(`[Card Generation] Loaded phrase:`, {
+        id: phrase.id,
+        text: phrase.text,
+        translation: phrase.translation,
+    });
+
     // Get user difficulties
     const userDifficulties = await getUserDifficulties();
+    console.log(`[Card Generation] User difficulties:`, userDifficulties);
 
     // Generate cards
     const cards = await generateCardsForPhrase(phrase, userDifficulties);
+    console.log(
+        `[Card Generation] Generated ${cards.length} cards:`,
+        cards.map((card) => ({
+            phrase_id: card.phrase_id,
+            card_type: card.card_type,
+            front_text: card.front_text.substring(0, 50) + "...",
+        })),
+    );
+
     await saveCards(cards);
 
-    console.log(`Generated ${cards.length} cards for new phrase: "${phrase.text}"`);
+    console.log(
+        `[Card Generation] Successfully saved ${cards.length} cards for phrase: "${phrase.text}"`,
+    );
 }

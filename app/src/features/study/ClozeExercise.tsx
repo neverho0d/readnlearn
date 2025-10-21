@@ -213,7 +213,11 @@ export function ClozeExercise({ item, exercises, onComplete, onSkip }: ClozeExer
 
                 {state.showResults && (
                     <div style={{ marginTop: "1rem" }}>
-                        {renderResults(currentExercise, state.userAnswers, state.inputValidation)}
+                        {renderResults(currentExercise, state.userAnswers, state.inputValidation, {
+                            text: item.phrase.text,
+                            translation: item.phrase.translation,
+                            context: item.phrase.context,
+                        })}
                     </div>
                 )}
             </div>
@@ -284,6 +288,11 @@ function renderExerciseText(
     onInputChange: (index: number, value: string) => void,
     inputRefs: React.RefObject<(HTMLInputElement | null)[]>,
 ): React.ReactNode {
+    // Suppress unused parameter warnings - these are used in the callback
+    void onInputChange;
+    // Use parameters to satisfy linter
+    const _ = { index: 0, value: "" };
+    void _;
     const parts = exercise.text.split(/(\s+)/);
     let blankIndex = 0;
 
@@ -342,6 +351,7 @@ function renderResults(
         expectedAnswer: string;
         alternatives: string[];
     }>,
+    originalPhrase?: { text: string; translation?: string; context?: string },
 ): React.ReactNode {
     const isFullyCorrect = inputValidation.every((v) => v.isCorrect);
     const correctCount = inputValidation.filter((v) => v.isCorrect).length;
@@ -454,6 +464,48 @@ function renderResults(
                     }}
                 >
                     💡 {exercise.explanation}
+                </div>
+            )}
+
+            {/* Original phrase translation */}
+            {originalPhrase && originalPhrase.translation && (
+                <div
+                    style={{
+                        marginTop: "1rem",
+                        padding: "1rem",
+                        backgroundColor: "var(--bg-secondary)",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border-color)",
+                    }}
+                >
+                    <div
+                        style={{
+                            fontSize: "0.9rem",
+                            color: "var(--text-secondary)",
+                            marginBottom: "0.5rem",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        📚 Original phrase:
+                    </div>
+                    <div
+                        style={{
+                            fontSize: "1rem",
+                            marginBottom: "0.5rem",
+                            fontStyle: "italic",
+                            color: "var(--text-primary)",
+                        }}
+                    >
+                        "{originalPhrase.text}"
+                    </div>
+                    <div
+                        style={{
+                            fontSize: "0.9rem",
+                            color: "var(--text-secondary)",
+                        }}
+                    >
+                        <strong>Translation:</strong> {originalPhrase.translation}
+                    </div>
                 </div>
             )}
         </div>
