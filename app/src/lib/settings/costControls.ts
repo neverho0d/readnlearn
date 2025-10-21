@@ -125,6 +125,7 @@ export class CostController {
         if (usageTrackingAvailable) return true;
         try {
             const { error } = await supabase.from("usage_tracking").select("id").limit(1);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (error && ((error as any).status === 404 || (error as any).code === "PGRST116")) {
                 return false;
             }
@@ -243,7 +244,8 @@ export class CostController {
                 console.error("Failed to record usage:", error);
             }
 
-            await this.checkAlerts(provider, cost);
+            await this.checkAlerts(provider);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             if (error?.status === 404) {
                 CostController.noteTableMissingOnce();
@@ -360,6 +362,7 @@ export class CostController {
                 limitExceeded,
                 remainingBudget,
             };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             if (error?.status === 404) {
                 CostController.noteTableMissingOnce();
@@ -382,7 +385,7 @@ export class CostController {
     /**
      * Check for cost alerts
      */
-    private async checkAlerts(provider: string, cost: number): Promise<void> {
+    private async checkAlerts(provider: string): Promise<void> {
         const limit = this.limits.get(provider);
         if (!limit) return;
 

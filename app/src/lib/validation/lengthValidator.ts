@@ -261,7 +261,7 @@ export function validateLengthWithRetry(
 
     while (!result.valid && retries < maxRetries) {
         // Apply suggestions to improve length
-        const improvedStory = applyLengthSuggestions(story, result.suggestions);
+        const improvedStory = applyLengthSuggestions(story);
         result = validateLength(improvedStory, config);
         retries++;
     }
@@ -272,7 +272,7 @@ export function validateLengthWithRetry(
 /**
  * Apply length suggestions to improve story
  */
-function applyLengthSuggestions(story: Story, suggestions: string[]): Story {
+function applyLengthSuggestions(story: Story): Story {
     // This is a simplified implementation
     // In practice, you would use AI to rewrite the story based on suggestions
     return story;

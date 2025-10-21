@@ -5,10 +5,11 @@
  * Each grade corresponds to different difficulty levels.
  */
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { getGradeDescription, getGradeColor } from "../../lib/srs/sm2";
 
 export interface GradingButtonsProps {
+    // eslint-disable-next-line no-unused-vars
     onGrade: (grade: number) => void;
     disabled?: boolean;
     showDescriptions?: boolean;
@@ -221,6 +222,7 @@ export function CompactGradingButtons({
     onGrade,
     disabled = false,
 }: {
+    // eslint-disable-next-line no-unused-vars
     onGrade: (grade: number) => void;
     disabled?: boolean;
 }) {

@@ -5,7 +5,6 @@
  * Shows completion status, accuracy, and time spent.
  */
 
-import React from "react";
 import { StudySession } from "../../lib/srs/studySession";
 
 export interface StudyStatsProps {

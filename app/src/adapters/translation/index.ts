@@ -5,7 +5,7 @@
  */
 
 export { TranslationAdapter } from "./TranslationAdapter";
-export type { TranslationResult, TranslationRequest, ProviderConfig } from "./TranslationAdapter";
+export type { TranslationResult, TranslationRequest } from "./TranslationAdapter";
 
 export {
     createOpenAIAdapter,

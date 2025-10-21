@@ -38,7 +38,7 @@ export interface ClozePrompt {
  * Generate a story prompt that includes all provided phrases
  */
 export function createStoryPrompt(prompt: StoryPrompt): string {
-    const { phrases, context, wordCount, includeGlosses } = prompt;
+    const { phrases, context, wordCount } = prompt;
 
     const phraseList = phrases
         .map(
@@ -148,7 +148,7 @@ ${story}
 
 **Required phrases to include:**
 ${phraseList}
-
+t
 **Validation checklist:**
 1. Does the story include ALL required phrases naturally?
 2. Is the story between 80-150 words?

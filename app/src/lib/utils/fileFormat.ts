@@ -60,7 +60,7 @@ function isMarkdownContent(content: string): boolean {
         /^#{1,6}\s+/m, // Headers (# ## ###)
         /^\*\s+/m, // Unordered lists (* item)
         /^\d+\.\s+/m, // Ordered lists (1. item)
-        /^\>\s+/m, // Blockquotes (> text)
+        /^>\s+/m, // Blockquotes (> text)
         /\[.*?\]\(.*?\)/m, // Links [text](url)
         /!\[.*?\]\(.*?\)/m, // Images ![alt](url)
         /`.*?`/m, // Inline code `code`

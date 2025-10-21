@@ -20,7 +20,6 @@ import {
     getDifficultyLevel,
     estimateSessionDuration,
     ReviewInput,
-    ReviewResult,
 } from "../../../../src/lib/srs/sm2";
 
 describe("SM-2 Algorithm", () => {
@@ -268,7 +267,7 @@ describe("SM-2 Algorithm", () => {
     describe("calculateNextReviewDate", () => {
         it("should calculate correct next review date", () => {
             const currentDate = new Date("2024-01-01");
-            const nextReviewDate = calculateNextReviewDate(currentDate, 3, 2.5, 1, 0);
+            const nextReviewDate = calculateNextReviewDate(3, 2.5, 1, 0);
 
             expect(nextReviewDate).toBeInstanceOf(Date);
             expect(nextReviewDate.getTime()).toBeGreaterThan(currentDate.getTime());

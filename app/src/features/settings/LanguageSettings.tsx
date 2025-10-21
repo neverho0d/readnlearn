@@ -21,7 +21,6 @@ interface LanguageSettingsProps {
 export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
     isLoading = false,
     onLoadFile,
-    sourceFile,
     currentText,
 }) => {
     const { settings, updateSettings, getLanguageName } = useSettings();
@@ -29,14 +28,8 @@ export const LanguageSettings: React.FC<LanguageSettingsProps> = ({
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const { theme, toggleTheme } = useTheme();
     const { mode, setMode } = useAppMode();
-    const {
-        isDetecting,
-        detectedLanguage,
-        detectionError,
-        detectTextLanguage,
-        getL2DisplayName,
-        isDetectionAvailable,
-    } = useLanguageDetection();
+    const { isDetecting, detectTextLanguage, getL2DisplayName, isDetectionAvailable } =
+        useLanguageDetection();
 
     const [showProviderSettings, setShowProviderSettings] = React.useState(false);
     const [showDifficultiesDialog, setShowDifficultiesDialog] = React.useState(false);

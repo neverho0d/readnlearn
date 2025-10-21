@@ -5,7 +5,7 @@
  * with TTL support and automatic cleanup of expired entries.
  */
 
-import { CacheEntry, createCacheKey } from "./types";
+import { CacheEntry } from "./types";
 
 export interface CacheOptions {
     ttl: number; // Time to live in milliseconds

@@ -240,6 +240,7 @@ export class StudySessionManager {
             }
 
             // Map the database result to Phrase interface
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (phrases || []).map((phrase: any) => ({
                 id: phrase.id,
                 text: phrase.text,

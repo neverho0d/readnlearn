@@ -5,7 +5,7 @@
  * Used in dictionary mode via phrase dropdown menu.
  */
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
     generateStoryForPhrase,
     getStoryForPhrase,
@@ -24,9 +24,6 @@ export function StoryModal({ isOpen, onClose, phraseId, phraseText }: StoryModal
     const [story, setStory] = useState<PhraseStory | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [action, setAction] = useState<"generate" | "regenerate" | "append" | "delete">(
-        "generate",
-    );
 
     // Load existing story on mount
     useEffect(() => {

@@ -68,7 +68,7 @@ export function validateCoverage(phrases: Phrase[], story: Story): CoverageResul
     }
 
     // Check for phrase order (phrases should appear in logical order)
-    const orderIssues = checkPhraseOrder(phrases, story.usedPhrases);
+    const orderIssues = checkPhraseOrder(story.usedPhrases);
     if (orderIssues.length > 0) {
         issues.push(`Phrase order issues: ${orderIssues.join(", ")}`);
     }
@@ -105,10 +105,7 @@ function findPartialMatches(phrases: string[], storyText: string): string[] {
 /**
  * Check if phrases appear in logical order
  */
-function checkPhraseOrder(
-    phrases: Phrase[],
-    usedPhrases: Array<{ phrase: string; position: number }>,
-): string[] {
+function checkPhraseOrder(usedPhrases: Array<{ phrase: string; position: number }>): string[] {
     const issues: string[] = [];
 
     // Sort used phrases by position

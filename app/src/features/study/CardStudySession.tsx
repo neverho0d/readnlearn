@@ -817,6 +817,25 @@ export function CardStudySession({ config = {} }: { config?: CardStudyConfig }) 
                     Remove Card
                 </button>
             </div>
+
+            {/* Debug info - Card ID and Phrase ID */}
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+                <div
+                    style={{
+                        fontSize: "0.7rem",
+                        color: "var(--text-secondary)",
+                        fontFamily: "monospace",
+                        backgroundColor: "var(--bg-secondary)",
+                        padding: "0.5rem",
+                        borderRadius: "4px",
+                        border: "1px solid var(--border-color)",
+                        display: "inline-block",
+                    }}
+                >
+                    <div>Card ID: {currentCard.card_id}</div>
+                    <div>Phrase ID: {currentCard.phrase_id}</div>
+                </div>
+            </div>
         </div>
     );
 }

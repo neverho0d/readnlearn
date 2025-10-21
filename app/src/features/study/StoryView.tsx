@@ -5,11 +5,12 @@
  * Provides audio playback if TTS is available.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { StoryResult } from "../../lib/srs/studySession";
 
 export interface StoryViewProps {
     story: StoryResult;
+    // eslint-disable-next-line no-unused-vars
     onPhraseClick?: (phrase: string) => void;
     showGlosses?: boolean;
     enableTTS?: boolean;

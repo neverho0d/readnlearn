@@ -189,7 +189,6 @@ export function getOverdueItems<T extends { nextReviewAt: Date }>(
  * @returns Next review date
  */
 export function calculateNextReviewDate(
-    currentDate: Date,
     grade: number,
     previousEaseFactor: number,
     previousInterval: number,

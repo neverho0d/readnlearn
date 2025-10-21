@@ -84,16 +84,10 @@ export async function exampleUsage() {
 
         // Cloze generation example
         const clozeResult = await clozeAdapter.generateCloze({
-            phrases: [
-                { id: "1", text: "hello", translation: "hola", context: "" },
-                { id: "2", text: "world", translation: "mundo", context: "" },
-            ],
-            context: {
-                l1: "en",
-                l2: "es",
-                proficiency: "beginner",
-            },
-            count: 3,
+            phrase: "hello world",
+            translation: "hola mundo",
+            context: "This is a simple greeting phrase for beginners learning Spanish.",
+            difficulty: "prepositions",
         });
         console.log("Cloze exercises:", clozeResult);
     } catch (error) {

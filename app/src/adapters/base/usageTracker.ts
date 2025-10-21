@@ -34,7 +34,9 @@ export class UsageTracker {
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
                 if (!db.objectStoreNames.contains(this.storeName)) {
-                    const store = db.createObjectStore(this.storeName, ["provider", "date"]);
+                    const store = db.createObjectStore(this.storeName, {
+                        keyPath: ["provider", "date"],
+                    });
                     store.createIndex("provider", "provider", { unique: false });
                     store.createIndex("date", "date", { unique: false });
                 }

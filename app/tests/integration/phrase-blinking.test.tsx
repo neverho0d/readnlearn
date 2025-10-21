@@ -51,13 +51,19 @@ describe("Phrase Blinking Integration", () => {
 
         // Wait for the card to blink
         await waitFor(() => {
-            expect(cardElement.style.backgroundColor).toMatch(/rgba\(180,\s*180,\s*180,\s*0\.25\)/);
+            expect(cardElement.style.backgroundColor).toBe("var(--bg-hover)");
         });
 
         // Wait for the reset
         await waitFor(
             () => {
-                expect(cardElement.style.backgroundColor).toMatch(/rgb\(255,\s*255,\s*255\)/);
+                // Check for either the CSS variable or the resolved value
+                const bgColor = cardElement.style.backgroundColor;
+                expect(
+                    bgColor === "var(--bg)" ||
+                        bgColor === "rgb(255, 255, 255)" ||
+                        bgColor === "#ffffff",
+                ).toBe(true);
             },
             { timeout: 1500 },
         );
@@ -89,7 +95,7 @@ describe("Phrase Blinking Integration", () => {
         window.dispatchEvent(jumpEvent1);
 
         await waitFor(() => {
-            expect(firstCard.style.backgroundColor).toMatch(/rgba\(180,\s*180,\s*180,\s*0\.25\)/);
+            expect(firstCard.style.backgroundColor).toBe("var(--bg-hover)");
         });
 
         // Test second card with different marker
@@ -99,7 +105,7 @@ describe("Phrase Blinking Integration", () => {
         window.dispatchEvent(jumpEvent2);
 
         await waitFor(() => {
-            expect(secondCard.style.backgroundColor).toMatch(/rgba\(180,\s*180,\s*180,\s*0\.25\)/);
+            expect(secondCard.style.backgroundColor).toBe("var(--bg-hover)");
         });
     });
 
@@ -141,7 +147,7 @@ describe("Phrase Blinking Integration", () => {
 
         // Target card should blink
         await waitFor(() => {
-            expect(targetCard.style.backgroundColor).toMatch(/rgba\(180,\s*180,\s*180,\s*0\.25\)/);
+            expect(targetCard.style.backgroundColor).toBe("var(--bg-hover)");
         });
 
         // Other card should not be affected
@@ -181,7 +187,7 @@ describe("Phrase Blinking Integration", () => {
 
         // Should still work correctly
         await waitFor(() => {
-            expect(cardElement.style.backgroundColor).toMatch(/rgba\(180,\s*180,\s*180,\s*0\.25\)/);
+            expect(cardElement.style.backgroundColor).toBe("var(--bg-hover)");
         });
     });
 

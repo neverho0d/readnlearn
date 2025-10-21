@@ -34,10 +34,14 @@ export interface ExplanationResult {
 }
 
 export interface MtDriver extends BaseAdapter {
+    // eslint-disable-next-line no-unused-vars
     translate(text: string, from: string, to: string): Promise<ProviderResponse<TranslationResult>>;
     explain(
+        // eslint-disable-next-line no-unused-vars
         text: string,
+        // eslint-disable-next-line no-unused-vars
         language: string,
+        // eslint-disable-next-line no-unused-vars
         verbosity?: "brief" | "normal" | "detailed",
     ): Promise<ProviderResponse<ExplanationResult>>;
     getSupportedLanguages(): Promise<string[]>;
@@ -100,7 +104,6 @@ export class GoogleDriver implements MtDriver {
                     data: cached,
                     metadata: {
                         provider: this.provider,
-                        tokens: text.length,
                         cost: 0,
                         latency: Date.now() - startTime,
                         cached: true,
@@ -168,7 +171,6 @@ export class GoogleDriver implements MtDriver {
                 data: result,
                 metadata: {
                     provider: this.provider,
-                    tokens: text.length,
                     cost: 0,
                     latency,
                     cached: false,
@@ -199,7 +201,6 @@ export class GoogleDriver implements MtDriver {
                     data: cached,
                     metadata: {
                         provider: this.provider,
-                        tokens: text.length,
                         cost: 0,
                         latency: Date.now() - startTime,
                         cached: true,
@@ -216,7 +217,7 @@ export class GoogleDriver implements MtDriver {
                 explanation: this.generateExplanation(text, verbosity),
                 examples: this.generateExamples(text),
                 grammar: this.analyzeGrammar(text),
-                tips: this.generateTips(text),
+                tips: this.generateTips(),
                 level: verbosity,
             };
 
@@ -231,7 +232,6 @@ export class GoogleDriver implements MtDriver {
                 data: result,
                 metadata: {
                     provider: this.provider,
-                    tokens: text.length,
                     cost: 0,
                     latency,
                     cached: false,
@@ -255,6 +255,7 @@ export class GoogleDriver implements MtDriver {
             }
 
             const data = await response.json();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return data.data.languages.map((lang: any) => lang.language);
         } catch (error) {
             console.error("Failed to get Google Translate supported languages:", error);
@@ -300,7 +301,7 @@ export class GoogleDriver implements MtDriver {
     /**
      * Generate tips
      */
-    private generateTips(text: string): string[] {
+    private generateTips(): string[] {
         return [
             "Practice using this phrase in different contexts",
             "Pay attention to pronunciation",
@@ -334,6 +335,7 @@ export class GoogleDriver implements MtDriver {
      * Call Google Translate API with retry logic
      */
     private async callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let lastError: any;
 
         for (let attempt = 0; attempt <= DEFAULT_RETRY_OPTIONS.maxRetries; attempt++) {
@@ -357,6 +359,7 @@ export class GoogleDriver implements MtDriver {
     /**
      * Create a provider error
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private createProviderError(error: any): ProviderError {
         return {
             name: "GoogleTranslateError",

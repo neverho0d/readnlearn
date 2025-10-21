@@ -285,14 +285,10 @@ export function ClozeExercise({ item, exercises, onComplete, onSkip }: ClozeExer
 function renderExerciseText(
     exercise: ClozeResult,
     userAnswers: string[],
+    // eslint-disable-next-line no-unused-vars
     onInputChange: (index: number, value: string) => void,
     inputRefs: React.RefObject<(HTMLInputElement | null)[]>,
 ): React.ReactNode {
-    // Suppress unused parameter warnings - these are used in the callback
-    void onInputChange;
-    // Use parameters to satisfy linter
-    const _ = { index: 0, value: "" };
-    void _;
     const parts = exercise.text.split(/(\s+)/);
     let blankIndex = 0;
 

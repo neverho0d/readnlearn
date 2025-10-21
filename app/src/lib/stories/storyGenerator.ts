@@ -54,7 +54,6 @@ export async function generateStoryForPhrase(
     }
 
     // Get existing story if appending
-    let existingStory = "";
     if (action === "append") {
         const { data: story } = await supabase
             .from("stories")
@@ -64,12 +63,13 @@ export async function generateStoryForPhrase(
             .single();
 
         if (story) {
-            existingStory = story.story;
+            // Story already exists, return it
+            return story.story;
         }
     }
 
     // Generate new story using LLM
-    const newStory = await generateStoryWithLLM(phrase, existingStory);
+    const newStory = await generateStoryWithLLM(phrase);
 
     // Generate content hash for the phrase
     const contentHash = `phrase-${phraseId}`;
@@ -149,7 +149,8 @@ export async function generateStoryForPhrase(
 /**
  * Generate story using LLM
  */
-async function generateStoryWithLLM(phrase: any, existingStory: string = ""): Promise<string> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function generateStoryWithLLM(phrase: any): Promise<string> {
     // Create drivers
     const openaiDriver = new OpenAIDriver();
     const googleDriver = new GoogleAIDriver();

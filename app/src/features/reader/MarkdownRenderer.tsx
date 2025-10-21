@@ -4,11 +4,12 @@ import rehypeRaw from "rehype-raw";
 
 interface MarkdownRendererProps {
     content: string;
+    onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onClick }) => {
     // Delegate clicks on decorated phrases
-    const onClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    const handleClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
         const target = e.target as HTMLElement | null;
         if (!target) return;
         const anchor = target.closest(".phrase-anchor") as HTMLElement | null;
@@ -39,9 +40,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
                 window.dispatchEvent(event);
             }
         }
+
+        // Call the external onClick handler if provided
+        if (onClick) {
+            onClick(e);
+        }
     };
     return (
-        <div style={{ lineHeight: 1.6 }} onClick={onClick}>
+        <div style={{ lineHeight: 1.6 }} onClick={handleClick}>
             <ReactMarkdown rehypePlugins={[rehypeRaw]}>{content || ""}</ReactMarkdown>
         </div>
     );

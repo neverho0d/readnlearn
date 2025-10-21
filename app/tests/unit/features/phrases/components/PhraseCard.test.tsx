@@ -23,7 +23,7 @@ describe("PhraseCard", () => {
     });
 
     it("should render phrase card with all content", () => {
-        const { getByText, getByDisplayValue } = render(<PhraseCard {...defaultProps} />);
+        const { getByText } = render(<PhraseCard {...defaultProps} />);
 
         expect(getByText("Hello world")).toBeTruthy();
         expect(getByText("Hola mundo")).toBeTruthy();
@@ -54,7 +54,7 @@ describe("PhraseCard", () => {
 
         // Wait for the blinking effect
         await waitFor(() => {
-            expect(cardElement.style.backgroundColor).toMatch(/rgba\(180,\s*180,\s*180,\s*0\.25\)/);
+            expect(cardElement.style.backgroundColor).toBe("var(--bg-hover)");
         });
 
         // Wait for the reset
@@ -87,7 +87,7 @@ describe("PhraseCard", () => {
 
     it("should handle phrase expansion and collapse", () => {
         const longText = "This is a very long phrase that should be truncated when not expanded";
-        const { getByText, container } = render(<PhraseCard {...defaultProps} text={longText} />);
+        const { container } = render(<PhraseCard {...defaultProps} text={longText} />);
 
         // Initially should show truncated text
         const phraseElement = container.querySelector('[style*="white-space: nowrap"]');

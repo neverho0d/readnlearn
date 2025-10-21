@@ -7,6 +7,7 @@
 export interface PostponedRequest {
     id: string;
     type: "translation" | "story" | "cloze";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any;
     createdAt: string;
     retryCount: number;
@@ -31,7 +32,7 @@ export class PostponedQueue {
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
                 if (!db.objectStoreNames.contains(this.storeName)) {
-                    const store = db.createObjectStore(this.storeName, "id");
+                    const store = db.createObjectStore(this.storeName, { keyPath: "id" });
                     store.createIndex("type", "type", { unique: false });
                     store.createIndex("createdAt", "createdAt", { unique: false });
                 }
@@ -44,6 +45,7 @@ export class PostponedQueue {
      */
     async addRequest(
         type: "translation" | "story" | "cloze",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data: any,
         maxRetries: number = 3,
     ): Promise<string> {

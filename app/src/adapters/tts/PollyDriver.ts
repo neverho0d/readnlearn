@@ -37,11 +37,17 @@ export interface Voice {
 
 export interface TtsDriver extends BaseAdapter {
     synthesize(
+        // eslint-disable-next-line no-unused-vars
         text: string,
+        // eslint-disable-next-line no-unused-vars
         voice: string,
+        // eslint-disable-next-line no-unused-vars
         language: string,
     ): Promise<ProviderResponse<SynthesisResult>>;
-    getVoices(language?: string): Promise<Voice[]>;
+    getVoices(
+        // eslint-disable-next-line no-unused-vars
+        language?: string,
+    ): Promise<Voice[]>;
     getSupportedLanguages(): Promise<string[]>;
 }
 
@@ -104,7 +110,6 @@ export class PollyDriver implements TtsDriver {
                     data: cached,
                     metadata: {
                         provider: this.provider,
-                        tokens: text.length,
                         cost: 0,
                         latency: Date.now() - startTime,
                         cached: true,
@@ -153,7 +158,6 @@ export class PollyDriver implements TtsDriver {
                 data: result,
                 metadata: {
                     provider: this.provider,
-                    tokens: text.length,
                     cost: this.calculateCost(text.length),
                     latency,
                     cached: false,
@@ -181,9 +185,11 @@ export class PollyDriver implements TtsDriver {
 
             // Filter by language if specified
             if (language) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 voices = voices.filter((voice: any) => voice.LanguageCode === language);
             }
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return voices.map((voice: any) => ({
                 id: voice.Id,
                 name: voice.Name,
@@ -214,6 +220,7 @@ export class PollyDriver implements TtsDriver {
     /**
      * Make authenticated request to AWS Polly
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async makeRequest(method: string, path: string, body?: any): Promise<Response> {
         const url = `${this.baseUrl}${path}`;
         const headers: Record<string, string> = {
@@ -225,7 +232,11 @@ export class PollyDriver implements TtsDriver {
             headers["Authorization"] = `AWS4-HMAC-SHA256 Credential=${this.config.apiKey}`;
         }
 
-        const options: RequestInit = {
+        const options: {
+            method: string;
+            headers: Record<string, string>;
+            body?: string;
+        } = {
             method,
             headers,
         };
@@ -260,6 +271,7 @@ export class PollyDriver implements TtsDriver {
      * Call AWS Polly API with retry logic
      */
     private async callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let lastError: any;
 
         for (let attempt = 0; attempt <= DEFAULT_RETRY_OPTIONS.maxRetries; attempt++) {
@@ -283,6 +295,7 @@ export class PollyDriver implements TtsDriver {
     /**
      * Create a provider error
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private createProviderError(error: any): ProviderError {
         return {
             name: "PollyError",

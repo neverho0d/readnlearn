@@ -326,6 +326,7 @@ describe("SettingsContext", () => {
         });
 
         it("handles all supported languages", () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let rerender: any;
             act(() => {
                 const result = render(
@@ -549,6 +550,7 @@ describe("SettingsContext", () => {
                 return <div data-testid="settings">{settings.l1}</div>;
             };
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let rerender: any;
             act(() => {
                 const result = render(

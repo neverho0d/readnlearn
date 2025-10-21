@@ -173,7 +173,6 @@ export async function updateCardReview(
  */
 function calculateSM2(grade: number, currentReview?: CardReview) {
     const minEase = 1.3;
-    const maxEase = 3.0;
 
     let easeFactor = 2.5;
     let intervalDays = 1;

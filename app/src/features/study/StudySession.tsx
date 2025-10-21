@@ -5,7 +5,7 @@
  * cloze exercises, story generation, and grading.
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     StudySessionManager,
     StudySession,
@@ -15,7 +15,6 @@ import {
 } from "../../lib/srs/studySession";
 import { StudyStats } from "./StudyStats";
 import { ClozeExercise } from "./ClozeExercise";
-import { CardStudySession } from "./CardStudySession";
 import { StoryView } from "./StoryView";
 import { GradingButtons } from "./GradingButtons";
 import { getStoryForContent } from "../../lib/phrases/storyQueue";
@@ -33,6 +32,7 @@ export interface StudySessionProps {
         proficiency: "beginner" | "intermediate" | "advanced";
     };
     currentText?: string; // Text content to load stories for
+    // eslint-disable-next-line no-unused-vars
     onSessionComplete: (session: StudySession) => void;
     onSessionCancel: () => void;
 }
@@ -186,7 +186,7 @@ export function StudySessionComponent({
                 const items = sessionManager.getCurrentItems();
                 for (const item of items) {
                     if (item.grade === undefined) {
-                        await sessionManager.submitGrade(item.id, grade);
+                        await sessionManager.submitGrade(item.id, grade, 0);
                     }
                 }
 
@@ -328,7 +328,9 @@ export function StudySessionComponent({
                         <button
                             onClick={() => {
                                 const session = sessionManager.getSessionStats();
-                                onSessionComplete(session);
+                                if (session) {
+                                    onSessionComplete(session);
+                                }
                             }}
                             style={{
                                 padding: "0.75rem 1.5rem",

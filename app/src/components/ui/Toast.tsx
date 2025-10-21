@@ -22,7 +22,9 @@ export interface Toast {
 
 export interface ToastContextType {
     toasts: Toast[];
+    // eslint-disable-next-line no-unused-vars
     addToast: (toast: Omit<Toast, "id">) => void;
+    // eslint-disable-next-line no-unused-vars
     removeToast: (id: string) => void;
     clearToasts: () => void;
 }
@@ -35,12 +37,13 @@ export interface ToastProviderProps {
 
 export interface ToastProps {
     toast: Toast;
+    // eslint-disable-next-line no-unused-vars
     onDismiss: (id: string) => void;
 }
 
 export function ToastComponent({ toast, onDismiss }: ToastProps) {
     const [isVisible, setIsVisible] = useState(false);
-    const [isLeaving, setIsLeaving] = useState(false);
+    const [, setIsLeaving] = useState(false);
 
     useEffect(() => {
         // Animate in
@@ -204,6 +207,7 @@ export function ToastContainer({
     onDismiss,
 }: {
     toasts: Toast[];
+    // eslint-disable-next-line no-unused-vars
     onDismiss: (id: string) => void;
 }) {
     return (

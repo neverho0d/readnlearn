@@ -16,6 +16,7 @@ export interface PhraseCardProps {
     explanation?: string | null;
     tags?: string[];
     isTranslating?: boolean;
+    showActions?: boolean;
     // eslint-disable-next-line no-unused-vars
     onJumpToPhrase?: (phraseId: string) => void;
 }

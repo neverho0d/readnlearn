@@ -7,6 +7,7 @@ export type SelectOption<T extends string = string> = {
 
 type SelectProps<T extends string = string> = {
     value: T;
+    // eslint-disable-next-line no-unused-vars
     onChange: (value: T) => void;
     options: Array<SelectOption<T>>;
     placeholder?: string;
@@ -14,6 +15,7 @@ type SelectProps<T extends string = string> = {
     style?: React.CSSProperties;
     className?: string;
     buttonWidthPx?: number;
+    disabled?: boolean;
 };
 
 export function Select<T extends string = string>({
@@ -25,6 +27,7 @@ export function Select<T extends string = string>({
     style,
     className,
     buttonWidthPx,
+    disabled = false,
 }: SelectProps<T>) {
     const [open, setOpen] = useState(false);
     const [highlightIndex, setHighlightIndex] = useState<number>(() =>
@@ -43,8 +46,14 @@ export function Select<T extends string = string>({
             if (!rootRef.current) return;
             if (!rootRef.current.contains(e.target as Node)) setOpen(false);
         }
-        if (open) document.addEventListener("mousedown", onDocClick);
-        return () => document.removeEventListener("mousedown", onDocClick);
+        if (open) {
+            document.addEventListener("mousedown", onDocClick);
+            document.addEventListener("click", onDocClick);
+        }
+        return () => {
+            document.removeEventListener("mousedown", onDocClick);
+            document.removeEventListener("click", onDocClick);
+        };
     }, [open]);
 
     useEffect(() => {
@@ -61,6 +70,7 @@ export function Select<T extends string = string>({
     }
 
     function onKeyDown(e: React.KeyboardEvent) {
+        if (disabled) return;
         if (!open) {
             if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
@@ -95,7 +105,8 @@ export function Select<T extends string = string>({
         >
             <button
                 type="button"
-                onClick={() => setOpen((o) => !o)}
+                disabled={disabled}
+                onClick={() => !disabled && setOpen((o) => !o)}
                 style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -108,7 +119,8 @@ export function Select<T extends string = string>({
                     padding: "4px 8px",
                     fontSize: 12,
                     minWidth: buttonWidthPx ?? 140,
-                    cursor: "pointer",
+                    cursor: disabled ? "not-allowed" : "pointer",
+                    opacity: disabled ? 0.6 : 1,
                 }}
                 aria-haspopup="listbox"
                 aria-expanded={open}
