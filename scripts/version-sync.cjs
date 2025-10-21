@@ -32,6 +32,21 @@ console.log(`📦 package.json: ${version}`);
 console.log(`⚙️  tauri.conf.json: ${version}`);
 console.log(`🦀 Cargo.toml: ${version}`);
 
+// Security audit check
+console.log(`\n🔒 Running security audit...`);
+try {
+    execSync("npm audit --audit-level=moderate", { stdio: "inherit" });
+    console.log("✅ Security audit passed - no vulnerabilities found!");
+} catch (error) {
+    console.error("❌ Security audit failed - vulnerabilities detected!");
+    console.log("💡 To fix vulnerabilities, run:");
+    console.log("   npm audit fix");
+    console.log("   npm audit --audit-level=moderate");
+    console.log("\n🚫 Release blocked due to security issues.");
+    console.log("Please fix all vulnerabilities before proceeding with the release.");
+    process.exit(1);
+}
+
 // Git operations
 const tagName = `v${version}`;
 

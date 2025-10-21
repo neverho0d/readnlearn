@@ -23,6 +23,7 @@
     "ci:build": "npm run build && npm run tauri:build",
     "security:audit": "npm audit --audit-level=moderate",
     "security:audit:fix": "npm audit fix",
+    "pre-release": "npm run type-check && npm run lint && npm run test:run && npm run security:audit",
     "version:sync": "node scripts/version-sync.cjs",
     "version:patch": "node scripts/version-bump.cjs patch",
     "version:minor": "node scripts/version-bump.cjs minor",
