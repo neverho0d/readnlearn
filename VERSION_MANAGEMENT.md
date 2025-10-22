@@ -69,12 +69,12 @@ npm run version:sync
     - `src-tauri/tauri.conf.json` → `version`
     - `src-tauri/Cargo.toml` → `version = "X.Y.Z"`
 3. **Runs security audit** (`npm audit --audit-level=moderate`)
-   - Blocks release if vulnerabilities are detected
-   - Provides fix instructions if issues found
+    - Blocks release if vulnerabilities are detected
+    - Provides fix instructions if issues found
 4. **Checks Tauri version alignment**
-   - Compares NPM `@tauri-apps/api` version with Rust `tauri` crate version
-   - Blocks release if versions don't match
-   - Provides fix instructions if mismatch detected
+    - Compares NPM `@tauri-apps/api` version with Rust `tauri` crate version
+    - Blocks release if versions don't match
+    - Provides fix instructions if mismatch detected
 5. Creates annotated tag `vX.Y.Z` (skips if it already exists)
 6. Pushes the tag (`git push origin vX.Y.Z`)
 

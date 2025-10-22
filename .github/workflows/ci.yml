@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
     push:
-        branches: [main]
+        branches: [dev]
     pull_request:
-        branches: [main]
+        branches: [dev, main]
 
 jobs:
     test:
@@ -151,48 +151,7 @@ jobs:
                   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
             # ---------- Artifact collection & upload ----------
-            - name: Gather built artifacts
-              id: gather_artifacts
-              shell: bash
-              run: |
-                  set -euo pipefail
-
-                  ROOT="${{ github.workspace }}/src-tauri/target"
-
-                  echo "Searching for bundles under: $ROOT (recursive find)"
-                  FILELIST="$(mktemp)"
-
-                  # Find all common package types produced by Tauri
-                  find "$ROOT" -type f \
-                    \( -path '*/bundle/*' \) \
-                    \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.app' \
-                       -o -name '*.msi' -o -name '*.exe' -o -name '*.zip' \
-                       -o -name '*AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
-                    2>/dev/null | sort > "$FILELIST" || true
-
-                  COUNT=$(wc -l < "$FILELIST" | tr -d ' ')
-                  echo "Found $COUNT artifacts:"
-                  cat "$FILELIST" || true
-
-                  if [[ "$COUNT" -eq 0 ]]; then
-                    echo "No artifacts found to upload."
-                    exit 0
-                  fi
-
-                  {
-                    echo "paths<<EOF"
-                    cat "$FILELIST"
-                    echo "EOF"
-                  } >> "$GITHUB_OUTPUT"
-
-            - name: Upload artifacts
-              if: steps.gather_artifacts.outputs.paths != ''
-              uses: actions/upload-artifact@v4
-              with:
-                  name: readnlearn-${{ matrix.platform }}
-                  path: ${{ steps.gather_artifacts.outputs.paths }}
-                  if-no-files-found: error
-                  retention-days: 30
+            # we don't do this here, we do it in the release workflow only
 
     security:
         name: Security Audit

@@ -9,7 +9,7 @@ updates:
           time: "09:00"
       open-pull-requests-limit: 10
       assignees:
-          - "psv"
+          - "nvrhood@gmail.com"
 
     # Enable version updates for GitHub Actions
     - package-ecosystem: "github-actions"
@@ -20,7 +20,7 @@ updates:
           time: "09:00"
       open-pull-requests-limit: 5
       assignees:
-          - "psv"
+          - "nvrhood@gmail.com"
 
     # Enable version updates for Cargo
     - package-ecosystem: "cargo"
@@ -31,4 +31,4 @@ updates:
           time: "09:00"
       open-pull-requests-limit: 5
       assignees:
-          - "psv"
+          - "nvrhood@gmail.com"

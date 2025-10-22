@@ -21,7 +21,7 @@
 The main reading interface where you can:
 
 - **Load Text**: Import text files (.txt, .md) or use sample texts
-- **Select Phrases**: Click and drag to select phrases you want to learn
+- **Select Phrases**: Click and drag to select phrases you want to translate and remember
 - **Save Phrases**: Add phrases to your learning collection with automatic translation
 - **View Annotations**: See saved phrases highlighted in the text with markers
 
@@ -56,16 +56,14 @@ Practice with spaced repetition system:
 - **Study Sessions**: Review phrases using cloze exercises and generated stories
 - **Progress Tracking**: Monitor your learning progress and statistics
 - **Adaptive Scheduling**: Phrases are scheduled based on your performance
-- **Story Generation**: AI-generated stories that include your phrases
 
 #### How to Use Learning Mode
 
 1. Click the "Learning" mode button
 2. Start a new study session
 3. Complete cloze exercises for each phrase
-4. Read the generated story with highlighted phrases
-5. Grade your performance (1-4 scale)
-6. Review your session statistics
+4. Grade your performance (1-4 scale)
+5. Review your session statistics
 
 ## Study System
 
@@ -81,10 +79,8 @@ The app uses the SuperMemo 2 algorithm to schedule phrase reviews:
 ### Study Session Flow
 
 1. **Cloze Exercises**: Fill-in-the-blank exercises for each phrase
-2. **Story Generation**: AI creates a story including all phrases
-3. **Story Review**: Read the story with phrase highlights and glosses
-4. **Grading**: Rate your overall understanding (1-4)
-5. **SRS Update**: Algorithm updates review schedules based on performance
+2. **Grading**: Rate your overall understanding (1-4)
+3. **SRS Update**: Algorithm updates review schedules based on performance
 
 ## Settings
 
@@ -93,7 +89,7 @@ The app uses the SuperMemo 2 algorithm to schedule phrase reviews:
 - **L1 (Native Language)**: Your primary language
 - **L2 (Target Language)**: Language you're learning
 - **Auto-detect L2**: Automatically detect target language from text
-- **Explanation Mode**: When L1=L2, show explanations instead of translations
+- **Explanation Mode**: When L1=L2, show only explanations
 
 ### Provider Settings
 
@@ -102,7 +98,6 @@ Configure cloud providers for enhanced features:
 #### OpenAI (Required for Learning Mode)
 
 - **API Key**: Your OpenAI API key
-- **Model**: Choose between GPT-4, GPT-3.5-turbo
 - **Usage Limits**: Set daily/monthly spending limits
 
 #### Translation Services
