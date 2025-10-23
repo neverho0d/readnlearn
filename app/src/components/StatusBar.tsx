@@ -5,9 +5,11 @@
  * Clicking on task count opens detailed popup with task list.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useStatusBar } from "../lib/status/StatusStore";
 import { TaskDetailsPopup } from "./TaskDetailsPopup";
+import { UsageIndicator } from "./UsageIndicator";
+import { UsageTracker, UsageStats } from "../lib/usage/UsageTracker";
 import "./StatusBar.css";
 
 export const StatusBar: React.FC = () => {
@@ -20,6 +22,29 @@ export const StatusBar: React.FC = () => {
         refreshProviderUsage,
     } = useStatusBar();
 
+    // Translation usage state
+    const [translationUsage, setTranslationUsage] = useState<{
+        deepl: UsageStats;
+        google: UsageStats;
+        hasAvailableProviders: boolean;
+    } | null>(null);
+
+    // Load translation usage data
+    const loadTranslationUsage = useCallback(async () => {
+        try {
+            const usageTracker = UsageTracker.getInstance();
+            const usage = await usageTracker.getUsageSummary();
+            setTranslationUsage(usage);
+        } catch (error) {
+            console.error("Failed to load translation usage:", error);
+        }
+    }, []);
+
+    // Load translation usage data once on mount
+    useEffect(() => {
+        loadTranslationUsage();
+    }, []); // Empty dependency array - only run once on mount
+
     // Refresh provider usage when component mounts and when settings change
     useEffect(() => {
         refreshProviderUsage();
@@ -30,12 +55,23 @@ export const StatusBar: React.FC = () => {
             refreshProviderUsage();
         };
 
+        // Listen for translation usage updates
+        const handleTranslationUpdate = () => {
+            console.log("StatusBar: Translation usage updated, refreshing...");
+            loadTranslationUsage();
+        };
+
         window.addEventListener("readnlearn:settings-updated", handleSettingsUpdate);
+        window.addEventListener("readnlearn:translation-usage-updated", handleTranslationUpdate);
 
         return () => {
             window.removeEventListener("readnlearn:settings-updated", handleSettingsUpdate);
+            window.removeEventListener(
+                "readnlearn:translation-usage-updated",
+                handleTranslationUpdate,
+            );
         };
-    }, [refreshProviderUsage]);
+    }, [refreshProviderUsage, loadTranslationUsage]);
 
     const allTasks = getAllTasks();
     const runningTasks = allTasks.filter(
@@ -67,6 +103,17 @@ export const StatusBar: React.FC = () => {
                         Google: ${providerUsage.google.used.toFixed(2)}/$
                         {providerUsage.google.limit}
                     </span>
+
+                    {/* Translation Usage Indicators */}
+                    {translationUsage && (
+                        <>
+                            <span className="provider-separator">|</span>
+                            <div className="translation-usage">
+                                <UsageIndicator provider="deepl" usage={translationUsage.deepl} />
+                                <UsageIndicator provider="google" usage={translationUsage.google} />
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 

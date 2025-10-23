@@ -23,6 +23,7 @@ export interface TranslationResult {
     translation: string;
     detectedLanguage?: string;
     confidence?: number;
+    billedCharacters?: number;
 }
 
 export interface ExplanationResult {
@@ -55,6 +56,15 @@ export class DeepLDriver implements MtDriver {
     constructor(config: ProviderConfig) {
         this.config = config;
         this.baseUrl = config.baseUrl || "https://api-free.deepl.com/v2";
+    }
+
+    /**
+     * Decode HTML entities in text
+     */
+    private decodeHtmlEntities(text: string): string {
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = text;
+        return textarea.value;
     }
 
     /**
@@ -148,21 +158,51 @@ export class DeepLDriver implements MtDriver {
                     text: [text],
                     source_lang: this.mapLanguageCode(from),
                     target_lang: this.mapLanguageCode(to),
-                    preserve_formatting: 1,
+                    preserve_formatting: true,
+                    show_billed_characters: true,
                 } as Record<string, unknown>;
 
-                const raw = await tauriInvoke<string>("deepl_proxy", {
+                console.log("🔍 DeepL Tauri request payload:", payload);
+
+                // Add timeout to prevent hanging
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    setTimeout(
+                        () => reject(new Error("DeepL API timeout after 30 seconds")),
+                        30000,
+                    );
+                });
+
+                const apiPromise = tauriInvoke<string>("deepl_proxy", {
                     apiKey: this.config.apiKey,
                     baseUrl: this.config.baseUrl,
                     method: "POST",
                     path: "/v2/translate",
                     body: JSON.stringify(payload),
                 });
+
+                const raw = await Promise.race([apiPromise, timeoutPromise]);
+
+                console.log("🔍 DeepL Tauri raw response:", raw);
+
+                // Check if response is an error
+                if (raw.includes("timeout") || raw.includes("Timeout")) {
+                    throw new Error("DeepL API timeout after 30 seconds");
+                }
+
                 const data = JSON.parse(raw);
+                console.log("🔍 DeepL parsed response:", data);
+
+                // Check for API errors
+                if (data.message) {
+                    console.error("❌ DeepL API error:", data.message);
+                    throw new Error(`DeepL API error: ${data.message}`);
+                }
+
                 result = {
-                    translation: data?.translations?.[0]?.text || "",
+                    translation: this.decodeHtmlEntities(data?.translations?.[0]?.text || ""),
                     detectedLanguage: data?.translations?.[0]?.detected_source_language,
                     confidence: 1.0,
+                    billedCharacters: data?.translations?.[0]?.billed_characters || 0,
                 };
             } else {
                 const response = await this.callWithRetry(async () => {
@@ -170,15 +210,33 @@ export class DeepLDriver implements MtDriver {
                     formData.append("text", text);
                     formData.append("source_lang", this.mapLanguageCode(from));
                     formData.append("target_lang", this.mapLanguageCode(to));
-                    formData.append("preserve_formatting", "1");
+                    formData.append("preserve_formatting", "true");
+                    formData.append("show_billed_characters", "true");
 
-                    return await fetch(`${this.baseUrl}/translate`, {
-                        method: "POST",
-                        headers: {
-                            Authorization: `DeepL-Auth-Key ${this.config.apiKey}`,
-                        },
-                        body: formData,
-                    });
+                    console.log("🔍 DeepL fetch request to:", `${this.baseUrl}/translate`);
+
+                    // Add timeout to prevent hanging
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+                    try {
+                        const fetchResponse = await fetch(`${this.baseUrl}/translate`, {
+                            method: "POST",
+                            headers: {
+                                Authorization: `DeepL-Auth-Key ${this.config.apiKey}`,
+                            },
+                            body: formData,
+                            signal: controller.signal,
+                        });
+                        clearTimeout(timeoutId);
+                        return fetchResponse;
+                    } catch (error: unknown) {
+                        clearTimeout(timeoutId);
+                        if (error instanceof Error && error.name === "AbortError") {
+                            throw new Error("DeepL API timeout after 30 seconds");
+                        }
+                        throw error;
+                    }
                 });
 
                 if (!response.ok) {
@@ -188,10 +246,18 @@ export class DeepLDriver implements MtDriver {
                 }
 
                 const data = await response.json();
+
+                // Check for API errors
+                if (data.message) {
+                    console.error("❌ DeepL API error:", data.message);
+                    throw new Error(`DeepL API error: ${data.message}`);
+                }
+
                 result = {
-                    translation: data.translations[0]?.text || "",
+                    translation: this.decodeHtmlEntities(data.translations[0]?.text || ""),
                     detectedLanguage: data.translations[0]?.detected_source_language,
                     confidence: 1.0,
+                    billedCharacters: data.translations[0]?.billed_characters || 0,
                 };
             }
 

@@ -370,3 +370,110 @@ button {
         transform: rotate(360deg);
     }
 }
+
+/* Usage Indicator Styles */
+.usage-indicator {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border-color);
+    min-width: 200px;
+}
+
+.usage-indicator-compact {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: var(--panel);
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.usage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+}
+
+.usage-provider {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.usage-percentage {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.usage-progress {
+    width: 100%;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.usage-progress-bar {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.usage-details {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.usage-separator {
+    color: var(--text-secondary);
+}
+
+.usage-remaining {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+
+/* Color variants */
+.usage-green .usage-progress-bar {
+    background: #10b981;
+}
+
+.usage-yellow .usage-progress-bar {
+    background: #f59e0b;
+}
+
+.usage-red .usage-progress-bar {
+    background: #ef4444;
+}
+
+.usage-green {
+    border-color: #10b981;
+}
+
+.usage-yellow {
+    border-color: #f59e0b;
+}
+
+.usage-red {
+    border-color: #ef4444;
+}
+
+.usage-green .usage-percentage {
+    color: #10b981;
+}
+
+.usage-yellow .usage-percentage {
+    color: #f59e0b;
+}
+
+.usage-red .usage-percentage {
+    color: #ef4444;
+}

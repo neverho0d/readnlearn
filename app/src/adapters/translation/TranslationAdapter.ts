@@ -137,6 +137,15 @@ Answer in ${l1_name}.
     }
 
     /**
+     * Decode HTML entities in text
+     */
+    private decodeHtmlEntities(text: string): string {
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = text;
+        return textarea.value;
+    }
+
+    /**
      * Parse the translation response from LLM
      */
     private parseTranslationResponse(response: string): TranslationResult {
@@ -152,8 +161,8 @@ Answer in ${l1_name}.
             const result = JSON.parse(response);
 
             return {
-                translation: result.phrase_translation || "",
-                explanation: result.explanation || "",
+                translation: this.decodeHtmlEntities(result.phrase_translation || ""),
+                explanation: this.decodeHtmlEntities(result.explanation || ""),
             };
         } catch (error) {
             console.error("Failed to parse translation response:", error);

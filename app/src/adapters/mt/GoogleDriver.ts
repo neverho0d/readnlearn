@@ -23,6 +23,7 @@ export interface TranslationResult {
     translation: string;
     detectedLanguage?: string;
     confidence?: number;
+    billedCharacters?: number;
 }
 
 export interface ExplanationResult {
@@ -71,6 +72,23 @@ export class GoogleDriver implements MtDriver {
     }
 
     /**
+     * Decode HTML entities in text
+     */
+    private decodeHtmlEntities(text: string): string {
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = text;
+        return textarea.value;
+    }
+
+    /**
+     * Count characters in text (for usage tracking)
+     */
+    private countCharacters(text: string): number {
+        // Count Unicode code points as per Google's billing rules
+        return Array.from(text).length;
+    }
+
+    /**
      * Get usage statistics
      */
     async getUsage(): Promise<UsageStats> {
@@ -116,6 +134,9 @@ export class GoogleDriver implements MtDriver {
         try {
             let result: TranslationResult;
 
+            // Count characters for usage tracking
+            const characterCount = this.countCharacters(text);
+
             if (tauriIsTauri()) {
                 const body: Record<string, unknown> = { q: text, target: to };
                 if (from && from !== "auto") body.source = from;
@@ -129,9 +150,12 @@ export class GoogleDriver implements MtDriver {
                 });
                 const data = JSON.parse(raw);
                 result = {
-                    translation: data?.data?.translations?.[0]?.translatedText || "",
+                    translation: this.decodeHtmlEntities(
+                        data?.data?.translations?.[0]?.translatedText || "",
+                    ),
                     detectedLanguage: data?.data?.translations?.[0]?.detectedSourceLanguage,
                     confidence: 1.0,
+                    billedCharacters: characterCount,
                 };
             } else {
                 const response = await this.callWithRetry(async () => {
@@ -154,9 +178,12 @@ export class GoogleDriver implements MtDriver {
 
                 const data = await response.json();
                 result = {
-                    translation: data.data.translations[0]?.translatedText || "",
+                    translation: this.decodeHtmlEntities(
+                        data.data.translations[0]?.translatedText || "",
+                    ),
                     detectedLanguage: data.data.translations[0]?.detectedSourceLanguage,
                     confidence: 1.0,
+                    billedCharacters: characterCount,
                 };
             }
 

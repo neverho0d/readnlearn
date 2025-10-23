@@ -15,7 +15,13 @@ async fn openai_proxy(
     if api_key.is_empty() { return Err("Missing OpenAI API key".into()); }
     let base = base_url.unwrap_or_else(|| "https://api.openai.com".to_string());
     let url = format!("{}{}", base, path);
-    let client = reqwest::Client::new();
+    
+    // Create client with timeout
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    
     let mut req = match method.to_uppercase().as_str() {
         "POST" => client.post(&url),
         "GET" => client.get(&url),
@@ -45,7 +51,13 @@ async fn deepl_proxy(
     if api_key.is_empty() { return Err("Missing DeepL API key".into()); }
     let base = base_url.unwrap_or_else(|| "https://api-free.deepl.com".to_string());
     let url = format!("{}{}", base, path);
-    let client = reqwest::Client::new();
+    
+    // Create client with timeout
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    
     let mut req = match method.to_uppercase().as_str() {
         "POST" => client.post(&url),
         "GET" => client.get(&url),
@@ -75,7 +87,13 @@ async fn google_proxy(
     let base = base_url.unwrap_or_else(|| "https://translation.googleapis.com".to_string());
     let sep = if path.contains('?') { "&" } else { "?" };
     let url = format!("{}{}{}key={}", base, path, sep, api_key);
-    let client = reqwest::Client::new();
+    
+    // Create client with timeout
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    
     let mut req = match method.to_uppercase().as_str() {
         "POST" => client.post(&url),
         "GET" => client.get(&url),
