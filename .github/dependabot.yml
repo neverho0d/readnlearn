@@ -7,7 +7,8 @@ updates:
           interval: "weekly"
           day: "monday"
           time: "09:00"
-      open-pull-requests-limit: 10
+      open-pull-requests-limit: 5
+      target-branch: "dev"
       assignees:
           - "nvrhood@gmail.com"
 
@@ -19,6 +20,7 @@ updates:
           day: "monday"
           time: "09:00"
       open-pull-requests-limit: 5
+      target-branch: "dev"
       assignees:
           - "nvrhood@gmail.com"
 
@@ -30,5 +32,6 @@ updates:
           day: "monday"
           time: "09:00"
       open-pull-requests-limit: 5
+      target-branch: "dev"
       assignees:
           - "nvrhood@gmail.com"
