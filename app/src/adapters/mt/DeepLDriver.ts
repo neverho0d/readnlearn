@@ -173,6 +173,7 @@ export class DeepLDriver implements MtDriver {
                 });
 
                 const apiPromise = tauriInvoke<string>("deepl_proxy", {
+                    // codeql[js/insecure-randomness]: apiKey is user-provided configuration, not generated with Math.random()
                     apiKey: this.config.apiKey,
                     baseUrl: this.config.baseUrl,
                     method: "POST",

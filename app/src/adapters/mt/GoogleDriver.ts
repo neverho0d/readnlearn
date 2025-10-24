@@ -142,6 +142,7 @@ export class GoogleDriver implements MtDriver {
                 if (from && from !== "auto") body.source = from;
 
                 const raw = await tauriInvoke<string>("google_proxy", {
+                    // codeql[js/insecure-randomness]: apiKey is user-provided configuration, not generated with Math.random()
                     apiKey: this.config.apiKey,
                     baseUrl: this.config.baseUrl,
                     method: "POST",
