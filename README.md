@@ -24,15 +24,15 @@ ReadNLearn is an application that helps you learn foreign languages through cont
 
 - **Two-pane reading interface** with synchronized text and phrase panels
 - **Smart phrase capture** with automatic translation and explanation
-- **AI-powered study sessions** with cloze exercises and story generation
+- **AI-powered study sessions** with cloze exercises
 - **Spaced repetition system** for optimal learning retention
 - **Cloud-first architecture** with offline caching for seamless experience
 
 ### Key Features
 
-- **Reading Mode**: Load text files, select phrases, and save them with automatic translation
+- **Reading Mode**: Load text files, select phrases, and save them with automatic and context-aware translation
 - **Dictionary Mode**: Search, filter, and manage your saved phrases with advanced full-text search
-- **Learning Mode**: Practice with AI-generated cloze exercises and contextual stories
+- **Learning Mode**: Practice with AI-generated cloze exercises
 - **Multi-language support** with configurable L1/L2 language pairs
 - **Cloud providers**: OpenAI, DeepL, Google Translate integration
 - **Offline-first**: Works offline with local caching and sync when online
@@ -143,7 +143,7 @@ npm run pre-release
 
 ### 🧠 Learning Mode
 
-- **Study Sessions**: AI-generated cloze exercises and contextual stories
+- **Study Sessions**: AI-generated cloze exercises
 - **SRS Algorithm**: Spaced repetition with SM-2 scheduling
 - **Progress Tracking**: Statistics and learning analytics
 - **Card Generation**: Automatic card creation from saved phrases
