@@ -10,8 +10,7 @@ A cloud-first text reader and phrase book with offline cache and cloud providers
 
 The core concept is to create an intelligent reading assistant that transforms any text into a personalized learning experience. When you encounter unfamiliar phrases while reading, you can capture them with a simple selection, and the application will:
 
-- **Automatically translate and explain** the phrase using AI-powered translation services
-- **Generate contextual examples** to help you understand usage patterns
+- **Automatically translate and explain** the phrase using AI-powered translation services, using the phrase context to get the best possible translation
 - **Create personalized study cards** based on your proficiency level (A1, A2, B1, B2, C1, C2)
 - **Target specific learning difficulties** - select areas where you typically struggle (e.g., tense/aspect, gender agreement, word order, prepositions)
 - **Personalized explanations** - AI focuses explanations on your selected difficulty areas for more targeted learning
